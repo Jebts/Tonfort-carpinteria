@@ -1,0 +1,298 @@
+{
+  "name": "A2 - mensaje-entrante-whatsapp",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "a2-incoming", "responseMode": "onReceived" },
+      "name": "1. Webhook mensaje entrante (POST)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 400],
+      "webhookId": "a2-incoming"
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $json;\nconst header = $input.first().json.headers ? $input.first().json.headers['x-hub-signature-256'] : undefined;\nreturn [{\n  json: {\n    phone_number_id: b.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id,\n    wa_id: b.entry?.[0]?.changes?.[0]?.value?.contacts?.[0]?.wa_id,\n    mensaje_externo_id: b.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.id,\n    contenido: b.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.text?.body,\n    timestamp: b.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.timestamp,\n    x_hub_signature: header,\n    raw_body: JSON.stringify(b)\n  }\n}];"
+      },
+      "name": "2. Extraer campos (conservar body raw)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 400]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT empresa_id, usuario_id AS usuario_linea_id, webhook_secret\nFROM integraciones\nWHERE identificador_externo = $1 AND tipo = 'whatsapp' AND deleted_at IS NULL;",
+        "queryParameters": { "parameter": [ { "value": "={{ $json.phone_number_id }}" } ] }
+      },
+      "name": "2.5. Obtener webhook_secret (app_router)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [720, 400],
+      "credentials": { "postgres": { "id": "POSTGRES_APP_ROUTER", "name": "Postgres - app_router" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $json.webhook_secret;\nconst sigHeader = $json.x_hub_signature || '';\nconst raw = $json.raw_body || JSON.stringify($json);\nconst expected = 'sha256=' + crypto.createHmac('sha256', secret).update(raw).digest('hex');\nconst valido = sigHeader === expected;\nreturn [{ json: { ...$json, firma_valida: valido } }];"
+      },
+      "name": "2.5b. Validar firma X-Hub-Signature-256",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 400]
+    },
+    {
+      "parameters": { "statusCode": 403, "responseBody": "firma invalida" },
+      "name": "2.5c. Rechazar firma invalida (403)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1200, 280]
+    },
+    {
+      "parameters": { "statusCode": 200 },
+      "name": "3. Respond 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1200, 460]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [ { "leftValue": "={{ $json.estado }}", "rightValue": "activo", "operator": { "type": "string", "operation": "equals" } } ]
+        }
+      },
+      "name": "4. IF integracion activa",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1440, 460]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [ { "leftValue": "={{ $json.empresa_id }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty" } } ]
+        }
+      },
+      "name": "5. IF fila devuelta",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1680, 460]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET app.tenant_id = '{{ $json.empresa_id }}';\nSELECT id, nombre, rol FROM usuarios_empresa WHERE telefono = $1 AND deleted_at IS NULL;",
+        "queryParameters": { "parameter": [ { "value": "={{ $json.wa_id }}" } ] }
+      },
+      "name": "6. SET tenant y buscar usuario_empresa (app_tenant)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1920, 460],
+      "credentials": { "postgres": { "id": "POSTGRES_APP_TENANT", "name": "Postgres - app_tenant" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [ { "leftValue": "={{ $json.rol }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty" } } ]
+        }
+      },
+      "name": "7. IF es usuario_empresa",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2160, 460]
+    },
+    {
+      "parameters": {
+        "workflowId": { "value": "D - chat-asistente", "mode": "name" },
+        "input": { "empresa_id": "={{ $('6. SET tenant y buscar usuario_empresa (app_tenant)').item.json.empresa_id }}", "wa_id": "={{ $json.wa_id }}", "mensaje": "={{ $json.contenido }}" }
+      },
+      "name": "D. Chat Asistente (Execute Workflow)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [2400, 320]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, is_blocked FROM clientes WHERE empresa_id = current_setting('app.tenant_id')::uuid AND telefono = $1 AND deleted_at IS NULL;",
+        "queryParameters": { "parameter": [ { "value": "={{ $json.wa_id }}" } ] }
+      },
+      "name": "8. Buscar cliente (app_tenant)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [2160, 600],
+      "credentials": { "postgres": { "id": "POSTGRES_APP_TENANT", "name": "Postgres - app_tenant" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [ { "leftValue": "={{ $json.is_blocked }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } } ]
+        }
+      },
+      "name": "9. IF is_blocked",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2400, 600]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [ { "leftValue": "={{ $json.id }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty" } } ]
+        }
+      },
+      "name": "10. IF existe cliente",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2640, 600]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO clientes (empresa_id, telefono, opt_in_mensajes) VALUES (current_setting('app.tenant_id')::uuid, $1, TRUE) RETURNING id;",
+        "queryParameters": { "parameter": [ { "value": "={{ $json.wa_id }}" } ] }
+      },
+      "name": "10b. Crear cliente (app_tenant)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [2880, 720],
+      "credentials": { "postgres": { "id": "POSTGRES_APP_TENANT", "name": "Postgres - app_tenant" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Resolver contexto activo de conversación (estructura híbrida).\n// Pendiente de detalle en diseño del Agente IA (Instrucciones §9).\nreturn [{ json: { ...$json, contexto_resuelto: true } }];"
+      },
+      "name": "11. Resolver contexto activo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3120, 600]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT estado, periodo_fin FROM suscripciones\nWHERE empresa_id = current_setting('app.tenant_id')::uuid AND estado = 'activa' AND deleted_at IS NULL;",
+        "queryParameters": { "parameter": [] }
+      },
+      "name": "12. Verificar estado suscripcion (app_tenant)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [3360, 600],
+      "credentials": { "postgres": { "id": "POSTGRES_APP_TENANT", "name": "Postgres - app_tenant" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            { "leftValue": "={{ $json.estado }}", "rightValue": "activa", "operator": { "type": "string", "operation": "equals" } },
+            { "leftValue": "={{ $json.periodo_fin }}", "rightValue": "={{ $now }}", "operator": { "type": "dateTime", "operation": "after" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "name": "12b. IF suscripcion activa y vigente",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3600, 600]
+    },
+    {
+      "parameters": { "statusCode": 200, "responseBody": "servicio pausado" },
+      "name": "12c. Responder servicio pausado",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [3840, 480]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id AS sesion_id FROM sesiones WHERE cliente_id = $1 AND empresa_id = current_setting('app.tenant_id')::uuid AND cerrada = FALSE ORDER BY created_at DESC LIMIT 1;",
+        "queryParameters": { "parameter": [ { "value": "={{ $json.cliente_id }}" } ] }
+      },
+      "name": "13. Resolver/continuar sesion (app_tenant)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [3840, 640],
+      "credentials": { "postgres": { "id": "POSTGRES_APP_TENANT", "name": "Postgres - app_tenant" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ventana de 24h para sesion_id (si no existe sesion, generar UUID).\nconst existente = $json.sesion_id;\nconst sesion_id = existente || $getWorkflowStaticData('global').uuid?.v4?.() || require('crypto').randomUUID();\nreturn [{ json: { ...$json, sesion_id } }];"
+      },
+      "name": "14. Ventana 24h sesion_id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4080, 640]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO mensajes (cliente_id, empresa_id, usuario_id, sesion_id, mensaje_externo_id, rol, contenido, tokens_usados, created_at)\nVALUES ($1, current_setting('app.tenant_id')::uuid, NULL, $2, $3, 'user', $4, 0, NOW())\nON CONFLICT DO NOTHING\nRETURNING id;",
+        "queryParameters": { "parameter": [
+          { "value": "={{ $json.cliente_id }}" },
+          { "value": "={{ $json.sesion_id }}" },
+          { "value": "={{ $json.mensaje_externo_id }}" },
+          { "value": "={{ $json.contenido }}" }
+        ] }
+      },
+      "name": "15. Insert mensaje user idempotente (app_tenant)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [4320, 640],
+      "credentials": { "postgres": { "id": "POSTGRES_APP_TENANT", "name": "Postgres - app_tenant" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [ { "leftValue": "={{ $json.id }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty" } } ]
+        }
+      },
+      "name": "16. IF insert devolvio fila",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [4560, 640]
+    },
+    {
+      "parameters": {
+        "workflowId": { "value": "Agente IA - conversacion-cliente", "mode": "name" },
+        "input": { "empresa_id": "={{ $('6. SET tenant y buscar usuario_empresa (app_tenant)').item.json.empresa_id }}", "cliente_id": "={{ $json.cliente_id }}", "sesion_id": "={{ $json.sesion_id }}", "mensaje": "={{ $json.contenido }}" }
+      },
+      "name": "17. Agente IA (Execute Workflow)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [4800, 640]
+    }
+  ],
+  "connections": {
+    "1. Webhook mensaje entrante (POST)": { "main": [ [ { "node": "2. Extraer campos (conservar body raw)", "type": "main", "index": 0 } ] ] },
+    "2. Extraer campos (conservar body raw)": { "main": [ [ { "node": "2.5. Obtener webhook_secret (app_router)", "type": "main", "index": 0 } ] ] },
+    "2.5. Obtener webhook_secret (app_router)": { "main": [ [ { "node": "2.5b. Validar firma X-Hub-Signature-256", "type": "main", "index": 0 } ] ] },
+    "2.5b. Validar firma X-Hub-Signature-256": { "main": [
+      [ { "node": "3. Respond 200 OK", "type": "main", "index": 0 } ],
+      [ { "node": "2.5c. Rechazar firma invalida (403)", "type": "main", "index": 0 } ]
+    ] },
+    "3. Respond 200 OK": { "main": [ [ { "node": "4. IF integracion activa", "type": "main", "index": 0 } ] ] },
+    "4. IF integracion activa": { "main": [ [ { "node": "5. IF fila devuelta", "type": "main", "index": 0 } ] ] },
+    "5. IF fila devuelta": { "main": [ [ { "node": "6. SET tenant y buscar usuario_empresa (app_tenant)", "type": "main", "index": 0 } ] ] },
+    "6. SET tenant y buscar usuario_empresa (app_tenant)": { "main": [ [ { "node": "7. IF es usuario_empresa", "type": "main", "index": 0 } ] ] },
+    "7. IF es usuario_empresa": { "main": [
+      [ { "node": "D. Chat Asistente (Execute Workflow)", "type": "main", "index": 0 } ],
+      [ { "node": "8. Buscar cliente (app_tenant)", "type": "main", "index": 0 } ]
+    ] },
+    "8. Buscar cliente (app_tenant)": { "main": [ [ { "node": "9. IF is_blocked", "type": "main", "index": 0 } ] ] },
+    "9. IF is_blocked": { "main": [ [ { "node": "10. IF existe cliente", "type": "main", "index": 0 } ] ] },
+    "10. IF existe cliente": { "main": [
+      [ { "node": "11. Resolver contexto activo", "type": "main", "index": 0 } ],
+      [ { "node": "10b. Crear cliente (app_tenant)", "type": "main", "index": 0 } ]
+    ] },
+    "10b. Crear cliente (app_tenant)": { "main": [ [ { "node": "11. Resolver contexto activo", "type": "main", "index": 0 } ] ] },
+    "11. Resolver contexto activo": { "main": [ [ { "node": "12. Verificar estado suscripcion (app_tenant)", "type": "main", "index": 0 } ] ] },
+    "12. Verificar estado suscripcion (app_tenant)": { "main": [ [ { "node": "12b. IF suscripcion activa y vigente", "type": "main", "index": 0 } ] ] },
+    "12b. IF suscripcion activa y vigente": { "main": [
+      [ { "node": "13. Resolver/continuar sesion (app_tenant)", "type": "main", "index": 0 } ],
+      [ { "node": "12c. Responder servicio pausado", "type": "main", "index": 0 } ]
+    ] },
+    "13. Resolver/continuar sesion (app_tenant)": { "main": [ [ { "node": "14. Ventana 24h sesion_id", "type": "main", "index": 0 } ] ] },
+    "14. Ventana 24h sesion_id": { "main": [ [ { "node": "15. Insert mensaje user idempotente (app_tenant)", "type": "main", "index": 0 } ] ] },
+    "15. Insert mensaje user idempotente (app_tenant)": { "main": [ [ { "node": "16. IF insert devolvio fila", "type": "main", "index": 0 } ] ] },
+    "16. IF insert devolvio fila": { "main": [ [ { "node": "17. Agente IA (Execute Workflow)", "type": "main", "index": 0 } ] ] }
+  },
+  "settings": { "errorWorkflow": "_Error Handler - notificacion", "executionOrder": "v1" },
+  "active": false,
+  "tags": ["F4", "meta", "whatsapp", "a2"]
+}
