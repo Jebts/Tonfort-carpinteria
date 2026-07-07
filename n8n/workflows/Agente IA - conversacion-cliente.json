@@ -1,0 +1,139 @@
+{
+  "name": "Agente IA - conversacion-cliente",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET app.tenant_id = '{{ $json.empresa_id }}';",
+        "queryParameters": { "parameter": [] }
+      },
+      "name": "0. SET tenant_id (app_tenant)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [480, 400],
+      "credentials": { "postgres": { "id": "POSTGRES_APP_TENANT", "name": "Postgres - app_tenant" } }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT instrucciones_md, identidad, horario_atencion, zona_horaria FROM empresas WHERE id = current_setting('app.tenant_id')::uuid;",
+        "queryParameters": { "parameter": [] }
+      },
+      "name": "1. Cargar contexto empresa (app_tenant)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [720, 400],
+      "credentials": { "postgres": { "id": "POSTGRES_APP_TENANT", "name": "Postgres - app_tenant" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const emp = $('1. Cargar contexto empresa (app_tenant)').item.json;\nconst entrada = $('Execute Workflow Trigger').item.json;\nconst identidad = typeof emp.identidad === 'object' ? JSON.stringify(emp.identidad) : (emp.identidad || '');\nconst horario = typeof emp.horario_atencion === 'object' ? JSON.stringify(emp.horario_atencion) : (emp.horario_atencion || '');\nconst prompt =\n  (emp.instrucciones_md || '') + '\\n\\n' +\n  'Identidad del negocio: ' + identidad + '\\n' +\n  'Horario de atencion: ' + horario + ' (' + (emp.zona_horaria || 'UTC') + ')\\n\\n' +\n  'Mensaje del cliente: ' + (entrada.mensaje || '');\nreturn [{ json: { prompt } }];"
+      },
+      "name": "1b. Ensamblar prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{$env.GEMINI_API_KEY}}",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ contents:[{parts:[{text: $json.prompt}]}], generationConfig:{ temperature:0.7, maxOutputTokens:1024 } }) }}"
+      },
+      "name": "2. Llamar Gemini 2.5 Flash (HTTP Request)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1200, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const c = $json.candidates?.[0]?.content?.parts?.map(p=>p.text).join('') ?? '';\nconst um = $json.usageMetadata ?? {};\nconst total = (um.promptTokenCount||0) + (um.candidatesTokenCount||0);\nreturn [{ json: { respuesta: c, tokens: total, promptTokenCount: um.promptTokenCount||0, candidatesTokenCount: um.candidatesTokenCount||0 } }];"
+      },
+      "name": "3. Extraer respuesta y tokens",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 400]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO mensajes (cliente_id, empresa_id, usuario_id, sesion_id, rol, contenido, tokens_usados, created_at)\nVALUES ($1, current_setting('app.tenant_id')::uuid, NULL, $2, 'assistant', $3, 0, NOW())\nRETURNING id;",
+        "queryParameters": { "parameter": [
+          { "value": "={{ $('Execute Workflow Trigger').item.json.cliente_id }}" },
+          { "value": "={{ $('Execute Workflow Trigger').item.json.sesion_id }}" },
+          { "value": "={{ $json.respuesta }}" }
+        ] }
+      },
+      "name": "4. Insert mensaje assistant (app_tenant)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1680, 400],
+      "credentials": { "postgres": { "id": "POSTGRES_APP_TENANT", "name": "Postgres - app_tenant" } }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE mensajes SET tokens_usados = $1 WHERE id = $2 AND rol = 'assistant';",
+        "queryParameters": { "parameter": [
+          { "value": "={{ $json.tokens }}" },
+          { "value": "={{ $('4. Insert mensaje assistant (app_tenant)').item.json.id }}" }
+        ] }
+      },
+      "name": "5. UPDATE tokens_usados (app_tenant)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1920, 400],
+      "credentials": { "postgres": { "id": "POSTGRES_APP_TENANT", "name": "Postgres - app_tenant" } }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT identificador_externo, credenciales_encriptadas->>'access_token' AS access_token\nFROM integraciones\nWHERE empresa_id = current_setting('app.tenant_id')::uuid AND tipo = 'whatsapp' AND estado = 'activo' AND deleted_at IS NULL\nLIMIT 1;",
+        "queryParameters": { "parameter": [] }
+      },
+      "name": "6. Obtener linea WhatsApp activa (app_tenant)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [2160, 400],
+      "credentials": { "postgres": { "id": "POSTGRES_APP_TENANT", "name": "Postgres - app_tenant" } }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/{{ $json.identificador_externo }}/messages",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "Authorization", "value": "Bearer {{ $json.access_token }}" } ] },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ messaging_product:'whatsapp', to: $('Execute Workflow Trigger').item.json.telefono, type:'text', text:{ body: $('3. Extraer respuesta y tokens').item.json.respuesta } }) }}"
+      },
+      "name": "6b. Enviar respuesta WhatsApp (HTTP Request)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [2400, 400]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": { "main": [ [ { "node": "0. SET tenant_id (app_tenant)", "type": "main", "index": 0 } ] ] },
+    "0. SET tenant_id (app_tenant)": { "main": [ [ { "node": "1. Cargar contexto empresa (app_tenant)", "type": "main", "index": 0 } ] ] },
+    "1. Cargar contexto empresa (app_tenant)": { "main": [ [ { "node": "1b. Ensamblar prompt", "type": "main", "index": 0 } ] ] },
+    "1b. Ensamblar prompt": { "main": [ [ { "node": "2. Llamar Gemini 2.5 Flash (HTTP Request)", "type": "main", "index": 0 } ] ] },
+    "2. Llamar Gemini 2.5 Flash (HTTP Request)": { "main": [ [ { "node": "3. Extraer respuesta y tokens", "type": "main", "index": 0 } ] ] },
+    "3. Extraer respuesta y tokens": { "main": [ [ { "node": "4. Insert mensaje assistant (app_tenant)", "type": "main", "index": 0 } ] ] },
+    "4. Insert mensaje assistant (app_tenant)": { "main": [ [ { "node": "5. UPDATE tokens_usados (app_tenant)", "type": "main", "index": 0 } ] ] },
+    "5. UPDATE tokens_usados (app_tenant)": { "main": [ [ { "node": "6. Obtener linea WhatsApp activa (app_tenant)", "type": "main", "index": 0 } ] ] },
+    "6. Obtener linea WhatsApp activa (app_tenant)": { "main": [ [ { "node": "6b. Enviar respuesta WhatsApp (HTTP Request)", "type": "main", "index": 0 } ] ] }
+  },
+  "settings": { "errorWorkflow": "_Error Handler - notificacion", "executionOrder": "v1" },
+  "active": false,
+  "tags": ["F4", "agente-ia", "gemini", "sub-workflow"]
+}

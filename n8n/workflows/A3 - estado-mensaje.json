@@ -1,0 +1,85 @@
+{
+  "name": "A3 - estado-mensaje",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "a3-status", "responseMode": "onReceived" },
+      "name": "1. Webhook estado mensaje (POST)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 400],
+      "webhookId": "a3-status"
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $json;\nconst m = b.entry?.[0]?.changes?.[0]?.value?.statuses?.[0];\nreturn [{ json: {\n  mensaje_externo_id: m?.id,\n  estado: m?.status,            // sent | delivered | read | failed\n  x_hub_signature: $input.first().json.headers ? $input.first().json.headers['x-hub-signature-256'] : undefined,\n  raw_body: JSON.stringify(b)\n} }];"
+      },
+      "name": "2. Extraer estado (conservar body raw)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 400]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT empresa_id, webhook_secret FROM integraciones WHERE identificador_externo = $1 AND tipo = 'whatsapp' AND deleted_at IS NULL;",
+        "queryParameters": { "parameter": [ { "value": "={{ $json.phone_number_id }}" } ] }
+      },
+      "name": "2.5. Obtener webhook_secret (app_router)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [720, 400],
+      "credentials": { "postgres": { "id": "POSTGRES_APP_ROUTER", "name": "Postgres - app_router" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $json.webhook_secret;\nconst sigHeader = $json.x_hub_signature || '';\nconst raw = $json.raw_body || JSON.stringify($json);\nconst expected = 'sha256=' + crypto.createHmac('sha256', secret).update(raw).digest('hex');\nconst valido = sigHeader === expected;\nreturn [{ json: { ...$json, firma_valida: valido } }];"
+      },
+      "name": "2.5b. Validar firma X-Hub-Signature-256",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 400]
+    },
+    {
+      "parameters": { "statusCode": 403, "responseBody": "firma invalida" },
+      "name": "2.5c. Rechazar firma invalida (403)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1200, 280]
+    },
+    {
+      "parameters": { "statusCode": 200 },
+      "name": "3. Respond 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1200, 460]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET app.tenant_id = '{{ $json.empresa_id }}';\nUPDATE mensajes SET estado_entrega = $1\nWHERE mensaje_externo_id = $2 AND empresa_id = current_setting('app.tenant_id')::uuid;",
+        "queryParameters": { "parameter": [
+          { "value": "={{ $json.estado }}" },
+          { "value": "={{ $json.mensaje_externo_id }}" }
+        ] }
+      },
+      "name": "4. Actualizar estado_entrega (app_tenant)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1440, 460],
+      "credentials": { "postgres": { "id": "POSTGRES_APP_TENANT", "name": "Postgres - app_tenant" } }
+    }
+  ],
+  "connections": {
+    "1. Webhook estado mensaje (POST)": { "main": [ [ { "node": "2. Extraer estado (conservar body raw)", "type": "main", "index": 0 } ] ] },
+    "2. Extraer estado (conservar body raw)": { "main": [ [ { "node": "2.5. Obtener webhook_secret (app_router)", "type": "main", "index": 0 } ] ] },
+    "2.5. Obtener webhook_secret (app_router)": { "main": [ [ { "node": "2.5b. Validar firma X-Hub-Signature-256", "type": "main", "index": 0 } ] ] },
+    "2.5b. Validar firma X-Hub-Signature-256": { "main": [
+      [ { "node": "3. Respond 200 OK", "type": "main", "index": 0 } ],
+      [ { "node": "2.5c. Rechazar firma invalida (403)", "type": "main", "index": 0 } ]
+    ] },
+    "3. Respond 200 OK": { "main": [ [ { "node": "4. Actualizar estado_entrega (app_tenant)", "type": "main", "index": 0 } ] ] }
+  },
+  "settings": { "errorWorkflow": "_Error Handler - notificacion", "executionOrder": "v1" },
+  "active": false,
+  "tags": ["F4", "meta", "webhook", "a3"]
+}

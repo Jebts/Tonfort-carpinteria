@@ -102,7 +102,7 @@
     {
       "parameters": {
         "workflowId": { "value": "D - chat-asistente", "mode": "name" },
-        "input": { "empresa_id": "={{ $('6. SET tenant y buscar usuario_empresa (app_tenant)').item.json.empresa_id }}", "wa_id": "={{ $json.wa_id }}", "mensaje": "={{ $json.contenido }}" }
+        "input": { "empresa_id": "={{ $('6. SET tenant y buscar usuario_empresa (app_tenant)').item.json.empresa_id }}", "usuario_id": "={{ $json.id }}", "telefono": "={{ $json.wa_id }}", "mensaje": "={{ $json.contenido }}" }
       },
       "name": "D. Chat Asistente (Execute Workflow)",
       "type": "n8n-nodes-base.executeWorkflow",
@@ -250,7 +250,7 @@
     {
       "parameters": {
         "workflowId": { "value": "Agente IA - conversacion-cliente", "mode": "name" },
-        "input": { "empresa_id": "={{ $('6. SET tenant y buscar usuario_empresa (app_tenant)').item.json.empresa_id }}", "cliente_id": "={{ $json.cliente_id }}", "sesion_id": "={{ $json.sesion_id }}", "mensaje": "={{ $json.contenido }}" }
+        "input": { "empresa_id": "={{ $('6. SET tenant y buscar usuario_empresa (app_tenant)').item.json.empresa_id }}", "cliente_id": "={{ $json.cliente_id }}", "sesion_id": "={{ $json.sesion_id }}", "telefono": "={{ $json.wa_id }}", "mensaje": "={{ $json.contenido }}" }
       },
       "name": "17. Agente IA (Execute Workflow)",
       "type": "n8n-nodes-base.executeWorkflow",
