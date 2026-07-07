@@ -201,7 +201,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT id AS sesion_id FROM sesiones WHERE cliente_id = $1 AND empresa_id = current_setting('app.tenant_id')::uuid AND cerrada = FALSE ORDER BY created_at DESC LIMIT 1;",
+        "query": "SELECT sesion_id FROM mensajes WHERE cliente_id = $1 AND empresa_id = current_setting('app.tenant_id')::uuid AND created_at > NOW() - INTERVAL '24 hours' ORDER BY created_at DESC LIMIT 1;",
         "queryParameters": { "parameter": [ { "value": "={{ $json.cliente_id }}" } ] }
       },
       "name": "13. Resolver/continuar sesion (app_tenant)",
