@@ -11,6 +11,7 @@ Studio free tier) como LLM conversacional.
 - `docs/Estructura_Logica_de_Solicitudes.md` — flujos A/B/C/D (v5, vigente).
 - `docs/Herramientas_del_Proyecto.md` — stack y variables de entorno (v5, vigente).
 - `docs/Instrucciones_del_Proyecto.md` — reglas de construcción n8n (v4, vigente).
+- `docs/Arquitectura_del_Proyecto.md` — arquitectura de carpetas y definición de F3.
 
 Jerarquía de autoridad: Constitución > Esquema vigente > Estructura vigente > Herramientas > conversación actual.
 
@@ -45,8 +46,8 @@ Ruta crítica sugerida: `F0 → F1 → F2 → F3 → F4 → F5`.
 
 - **F0** (documentación y entorno base): completado — Gemini 2.5 Flash reflejado en docs; repo inicializado.
 - **F1** (infra n8n self-hosted + Caddy): completado.
-- **F2** (conexión a BD + esquema v9.1 y fix linter 0010/0013/0011): en ejecución — reinit limpio en Supabase pendiente de aplicar; `sql/esquema_v9.sql` idempotente listo. (0014 `extension_in_public` queda como WARN documentado).
-- **F3**: pendiente (siguiente en la ruta crítica).
+- **F2** (conexión a BD + esquema v9.1 y fix linter 0010/0013/0011): en ejecución — reinit limpio en Supabase pendiente de aplicar; `sql/schema/esquema_v9.sql` idempotente listo. (0014 `extension_in_public` queda como WARN documentado).
+- **F3** (conexión n8n ↔ Supabase: credenciales + vars de entorno + smoke test RLS): definido — siguiente fase. Ver `docs/Arquitectura_del_Proyecto.md`.
 - **F4** (workflows n8n A1/A2/A3 + Agente IA + Error Handler): completado en git.
 
 ## Convenciones

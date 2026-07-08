@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # verify_db.sh - Verifica el esquema v9 en Supabase (F2).
-# Lee infra/.env (gitignored). No commitea secretos.
-# Uso: bash infra/verify_db.sh
+# Lee infra/.env (gitignored, un nivel arriba de scripts/). No commitea secretos.
+# Uso: bash infra/scripts/verify_db.sh
 set -u
 export PATH="/opt/homebrew/opt/libpq/bin:/usr/local/opt/libpq/bin:$PATH"
 command -v psql >/dev/null 2>&1 || { echo "psql no encontrado. Instala con: brew install libpq"; exit 1; }
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ENVFILE="$DIR/.env"
+ENVFILE="$DIR/../.env"
 [ -f "$ENVFILE" ] || { echo "Falta $ENVFILE"; exit 1; }
 set -a; source "$ENVFILE"; set +a
 
