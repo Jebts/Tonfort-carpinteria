@@ -43,8 +43,11 @@ viven en un gestor de secretos / variables de entorno de n8n; nada se commitea.
 
 Ruta crítica sugerida: `F0 → F1 → F2 → F3 → F4 → F5`.
 
-- **F0** (documentación y entorno base): en progreso — Gemini 2.5 Flash reflejado en docs; repo inicializado.
-- **F1–F10**: pendientes.
+- **F0** (documentación y entorno base): completado — Gemini 2.5 Flash reflejado en docs; repo inicializado.
+- **F1** (infra n8n self-hosted + Caddy): completado.
+- **F2** (conexión a BD + esquema v9.1 y fix linter 0010/0013/0011): en ejecución — reinit limpio en Supabase pendiente de aplicar; `sql/esquema_v9.sql` idempotente listo. (0014 `extension_in_public` queda como WARN documentado).
+- **F3**: pendiente (siguiente en la ruta crítica).
+- **F4** (workflows n8n A1/A2/A3 + Agente IA + Error Handler): completado en git.
 
 ## Convenciones
 
