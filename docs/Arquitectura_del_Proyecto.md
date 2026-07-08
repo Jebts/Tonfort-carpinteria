@@ -40,6 +40,12 @@ Jerarquía de autoridad (docs): `Constitucion_del_Proyecto.md` > `Esquema_*.md` 
 - **SQL canónico** (esquema vigente) → `sql/schema/`. Nunca se edita en otra carpeta.
 - **Parches/pinches** a una BD ya poblada → `sql/fixes/`.
 - **Datos de prueba / fixtures** → `sql/seeds/`.
+
+Las tablas de la app viven en el schema `public` (schema por defecto de Supabase para
+datos de la app). `auth` es un schema gestionado por Supabase Auth (contiene
+`auth.users`, referenciado por las FKs `auth_user_id` de `usuarios_internos` /
+`usuarios_empresa`); no se crean tablas de negocio allí. Por eso el WARN 0014
+`extension_in_public` se acepta como documentado.
 - **Workflows de una solicitud documentada** (A1, A2, A3, B1…B13, C1…C7, D) →
   `n8n/workflows/`; nombre `{sección}{número} - {nombre corto en minúsculas con guiones}.json`.
 - **Sub-workflows y helpers compartidos** (Agente IA, D como sub, _Error Handler) →
@@ -93,3 +99,8 @@ de punta a punta.
 **Criterio de terminación:** n8n opera la BD con RLS funcionando de extremo a
 extremo; el aislamiento prometido en F2 queda validado operativamente, no solo a
 nivel de esquema.
+
+> Parámetros de conexión reales (host del pooler, user con sufijo `.REF`, SSL) y el
+> manejo del `SET app.tenant_id` en n8n están en `n8n/credentials/README.md`. Los
+> WARN del linter (0014 `extension_in_public` y 0024 `rls_policy_always_true`) se
+> documentan allí como aceptados, para tenerlos en cuenta al diseñar los flujos.
