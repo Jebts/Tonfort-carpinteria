@@ -24,13 +24,31 @@
 -- ==========================================
 -- FASE 1: EXTENSIONES Y ROLES DE SEGURIDAD
 -- ==========================================
+-- DROP + CREATE para reinit seguro: DROP SCHEMA public CASCADE elimina los
+-- objetos de las extensiones pero deja el registro en pg_extension, asi que
+-- IF NOT EXISTS no los recrearia. Forzamos recreacion limpia.
+DROP EXTENSION IF EXISTS vector, pgcrypto, btree_gist CASCADE;
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
--- Crear los roles limitados para n8n (CUIDADO: Cambia las contraseñas antes de ejecutar en producción)
-CREATE ROLE app_router LOGIN PASSWORD 'tu_password_seguro_router' BYPASSRLS;
-CREATE ROLE app_tenant LOGIN PASSWORD 'tu_password_seguro_tenant';
+-- Crear los roles limitados para n8n (idempotente: reutiliza si ya existen tras un reinit)
+-- DROP SCHEMA public CASCADE no elimina roles, por eso se usa CREATE condicional + ALTER.
+-- CUIDADO: Cambia las contraseñas antes de ejecutar en producción.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'app_router') THEN
+        CREATE ROLE app_router LOGIN PASSWORD 'tu_password_seguro_router' BYPASSRLS;
+    END IF;
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'app_tenant') THEN
+        CREATE ROLE app_tenant LOGIN PASSWORD 'tu_password_seguro_tenant';
+    END IF;
+END
+$$;
+
+-- Asegurar password y flag BYPASSRLS en cada ejecucion (reinit seguro)
+ALTER ROLE app_router WITH PASSWORD 'tu_password_seguro_router' BYPASSRLS;
+ALTER ROLE app_tenant WITH PASSWORD 'tu_password_seguro_tenant';
 
 GRANT USAGE ON SCHEMA public TO app_router, app_tenant;
 
