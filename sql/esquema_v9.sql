@@ -1,7 +1,13 @@
 -- ============================================================
--- Esquema de Base de Datos v9 — script ejecutable (F2)
+-- Esquema de Base de Datos v9.1 — script ejecutable (F2)
 -- Fuente de verdad: docs/Esquema_de_Base_de_Datos_v9.md
 -- Ejecutar en el editor SQL de Supabase (proyecto ya creado).
+-- Cambios v9.1 (fix linter Supabase):
+--   * 0010: vistas con SECURITY INVOKER (WITH security_invoker = true)
+--   * 0013: RLS en particiones de mensajes + tablas globales de plataforma
+--   * 0011: SET search_path = public, pg_catalog en las 2 funciones trigger
+--   * GRANT SELECT de app_tenant sobre las vistas
+-- (0014 extension_in_public queda como WARN conocido/documentado)
 -- ============================================================
 --
 -- ANTES de ejecutar en producción:
@@ -288,7 +294,8 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = public, pg_catalog;
 
 CREATE TRIGGER trg_verificar_cupo_operadores_activos
     BEFORE INSERT OR UPDATE OF activo, rol ON usuarios_empresa
@@ -304,13 +311,15 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = public, pg_catalog;
 
 CREATE TRIGGER trg_desconectar_integracion_usuario_inactivo
     AFTER UPDATE OF activo ON usuarios_empresa
     FOR EACH ROW EXECUTE FUNCTION fn_desconectar_integracion_usuario_inactivo();
 
-CREATE VIEW v_consumo_tokens_empresa AS
+CREATE VIEW v_consumo_tokens_empresa
+WITH (security_invoker = true) AS
 SELECT
     s.empresa_id,
     s.id AS suscripcion_id,
@@ -326,7 +335,8 @@ LEFT JOIN mensajes m ON m.empresa_id = s.empresa_id
 WHERE s.estado = 'activa'
 GROUP BY s.empresa_id, s.id, s.operadores_contratados, s.periodo_fin, s.aviso_90pct_enviado;
 
-CREATE VIEW v_precio_operador_vigente AS
+CREATE VIEW v_precio_operador_vigente
+WITH (security_invoker = true) AS
 SELECT precio_operador_mensual, moneda
 FROM parametros_precios
 ORDER BY vigente_desde DESC
@@ -342,6 +352,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
     clientes, citas, mensajes, suscripciones, pagos
 TO app_tenant;
 GRANT SELECT ON parametros_tokens, parametros_precios TO app_tenant;
+GRANT SELECT ON v_consumo_tokens_empresa, v_precio_operador_vigente TO app_tenant;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_tenant;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_router;
@@ -366,6 +377,22 @@ ALTER TABLE citas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mensajes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE suscripciones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pagos ENABLE ROW LEVEL SECURITY;
+
+-- Particiones de mensajes: habilitar RLS (la politica tenant_isolation_mensajes se hereda del padre)
+ALTER TABLE mensajes_2026_07 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mensajes_2026_08 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mensajes_2026_09 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mensajes_2026_10 ENABLE ROW LEVEL SECURITY;
+
+-- Tablas globales de plataforma (sin tenant_id): RLS con politica permisiva.
+-- Solo roles de plataforma (app_router BYPASSRLS / service_role) las tocan;
+-- app_tenant no tiene SELECT sobre usuarios_internos, asi que queda protegida.
+ALTER TABLE usuarios_internos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE parametros_tokens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE parametros_precios ENABLE ROW LEVEL SECURITY;
+CREATE POLICY allow_platform_usuarios_internos ON usuarios_internos USING (true);
+CREATE POLICY allow_platform_parametros_tokens ON parametros_tokens USING (true);
+CREATE POLICY allow_platform_parametros_precios ON parametros_precios USING (true);
 
 CREATE POLICY tenant_isolation_empresas ON empresas USING (id = current_setting('app.tenant_id', true)::uuid);
 CREATE POLICY tenant_isolation_usuarios ON usuarios_empresa USING (empresa_id = current_setting('app.tenant_id', true)::uuid);
