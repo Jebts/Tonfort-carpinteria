@@ -28,5 +28,21 @@ export const appointments = pgTable("appointments", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })
 
+export const projects = pgTable("projects", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  location: text("location"),
+  year: text("year"),
+  category: text("category"),
+  summary: text("summary"),
+  story: text("story"),
+  coverImage: text("cover_image"),
+  videoUrl: text("video_url"),
+  published: integer("published").notNull().default(1),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
 export type Client = typeof clients.$inferSelect
 export type Appointment = typeof appointments.$inferSelect
+export type Project = typeof projects.$inferSelect
