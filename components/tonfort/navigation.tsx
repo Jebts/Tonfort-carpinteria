@@ -1,20 +1,26 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Logo } from "./logo"
 import { ThemeToggle } from "./theme-toggle"
 import { cn } from "@/lib/utils"
 
 const links = [
-  { label: "Filosofía", href: "#filosofia" },
-  { label: "Espacios", href: "#espacios" },
-  { label: "Luz", href: "#luz" },
-  { label: "Proyectos", href: "#proyectos" },
+  { label: "Proyectos", href: "/proyectos" },
+  { label: "Historia", href: "/historia" },
+  { label: "Agenda", href: "/agenda" },
+  { label: "Contacto", href: "/#contacto" },
 ]
 
 export function Navigation() {
+  const pathname = usePathname()
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
+
+  // The homepage has a dark full-bleed hero; interior pages start on a solid background.
+  const isHome = pathname === "/"
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24)
@@ -23,50 +29,60 @@ export function Navigation() {
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
 
-  // Over the hero (not scrolled) the text is always light; once scrolled it adopts theme colors.
-  const overHero = !scrolled && !open
+  // Text is light only while sitting over the hero on the homepage.
+  const overHero = isHome && !scrolled && !open
+
+  const isActive = (href: string) => {
+    if (href.startsWith("/#")) return false
+    return pathname === href
+  }
 
   return (
     <header
       className={cn(
         "fixed inset-x-0 top-0 z-50 transition-colors duration-500",
-        scrolled || open
-          ? "border-b border-border bg-background/80 text-foreground backdrop-blur-xl"
-          : "border-b border-transparent bg-transparent text-white",
+        overHero
+          ? "border-b border-transparent bg-transparent text-white"
+          : "border-b border-border bg-background/80 text-foreground backdrop-blur-xl",
       )}
     >
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-10">
-        <a href="#top" className="text-current" aria-label="Tonfort — inicio">
+        <Link href="/" className="text-current" aria-label="Tonfort — inicio">
           <Logo />
-        </a>
+        </Link>
 
         <ul className="hidden items-center gap-10 md:flex">
           {links.map((link) => (
             <li key={link.href}>
-              <a
+              <Link
                 href={link.href}
                 className={cn(
                   "font-mono text-xs uppercase tracking-widest transition-opacity hover:opacity-100",
-                  overHero ? "text-white/70" : "text-muted-foreground",
+                  overHero
+                    ? "text-white/70 hover:text-white"
+                    : isActive(link.href)
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
                 )}
+                aria-current={isActive(link.href) ? "page" : undefined}
               >
                 {link.label}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
 
         <div className="flex items-center gap-3">
           <ThemeToggle className={overHero ? "border-white/30 text-white" : "border-border text-foreground"} />
-          <a
-            href="#contacto"
+          <Link
+            href="/agenda"
             className={cn(
               "hidden rounded-full px-6 py-2.5 font-mono text-xs uppercase tracking-widest transition-opacity hover:opacity-90 md:inline-block",
               overHero ? "bg-white text-[#0a1f33]" : "bg-primary text-primary-foreground",
             )}
           >
-            Contacto
-          </a>
+            Agendar
+          </Link>
 
           <button
             type="button"
@@ -85,15 +101,15 @@ export function Navigation() {
       {open && (
         <div className="border-t border-border bg-background md:hidden">
           <ul className="flex flex-col px-6 py-4">
-            {links.concat({ label: "Contacto", href: "#contacto" }).map((link) => (
-              <li key={link.href}>
-                <a
+            {links.concat({ label: "Agendar", href: "/agenda" }).map((link) => (
+              <li key={link.label}>
+                <Link
                   href={link.href}
                   onClick={() => setOpen(false)}
                   className="block py-3 font-mono text-sm uppercase tracking-widest text-foreground"
                 >
                   {link.label}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>

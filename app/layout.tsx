@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Roboto, Roboto_Condensed, Roboto_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
+import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
 const roboto = Roboto({
@@ -38,6 +39,7 @@ export default function RootLayout({
       <body className={`${roboto.variable} ${robotoCondensed.variable} ${robotoMono.variable} font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
+          <Toaster />
           <Analytics />
         </ThemeProvider>
       </body>

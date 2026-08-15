@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { Logo } from "./logo"
 import { WHATSAPP_URL, INSTAGRAM_URL, INSTAGRAM_HANDLE, EMAIL, EMAIL_URL } from "@/lib/contact"
 
@@ -45,23 +46,25 @@ export function Footer() {
             <div>
               <h3 className="font-mono text-xs uppercase tracking-widest text-brand-blue">Espacios</h3>
               <ul className="mt-5 space-y-3 text-sm text-muted-foreground">
-                <li><a href="#servicios" className="hover:text-foreground">Cocinas</a></li>
-                <li><a href="#servicios" className="hover:text-foreground">Closets</a></li>
-                <li><a href="#servicios" className="hover:text-foreground">Muebles de TV</a></li>
-                <li><a href="#servicios" className="hover:text-foreground">Puertas</a></li>
+                <li><a href="/#espacios" className="hover:text-foreground">Cocinas</a></li>
+                <li><a href="/#espacios" className="hover:text-foreground">Closets</a></li>
+                <li><a href="/#espacios" className="hover:text-foreground">Muebles de TV</a></li>
+                <li><a href="/#espacios" className="hover:text-foreground">Puertas</a></li>
               </ul>
             </div>
             <div>
               <h3 className="font-mono text-xs uppercase tracking-widest text-brand-blue">Estudio</h3>
               <ul className="mt-5 space-y-3 text-sm text-muted-foreground">
-                <li><a href="#filosofia" className="hover:text-foreground">Filosofía</a></li>
-                <li><a href="#iluminacion" className="hover:text-foreground">Iluminación</a></li>
-                <li><a href="#proyectos" className="hover:text-foreground">Proyectos</a></li>
+                <li><a href="/#filosofia" className="hover:text-foreground">Filosofía</a></li>
+                <li><a href="/#luz" className="hover:text-foreground">Iluminación</a></li>
+                <li><Link href="/proyectos" className="hover:text-foreground">Proyectos</Link></li>
+                <li><Link href="/historia" className="hover:text-foreground">Historia</Link></li>
               </ul>
             </div>
             <div>
               <h3 className="font-mono text-xs uppercase tracking-widest text-brand-blue">Contacto</h3>
               <ul className="mt-5 space-y-3 text-sm text-muted-foreground">
+                <li><Link href="/agenda" className="hover:text-foreground">Agendar cita</Link></li>
                 <li>
                   <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
                     WhatsApp
@@ -82,9 +85,17 @@ export function Footer() {
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
             © {new Date().getFullYear()} Tonfort
           </p>
-          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            La experiencia de un espacio
-          </p>
+          <div className="flex items-center gap-6">
+            <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+              La experiencia de un espacio
+            </p>
+            <Link
+              href="/staff"
+              className="font-mono text-xs uppercase tracking-widest text-muted-foreground/60 transition-colors hover:text-foreground"
+            >
+              Portal equipo
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
