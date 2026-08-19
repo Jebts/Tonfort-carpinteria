@@ -1,48 +1,40 @@
-# Infraestructura n8n self-hosted (F1)
-# n8n detrás de Caddy con TLS automático (Let's Encrypt) + rate limiting básico.
+# Infraestructura self-contained para tonfort (carpintería)
+# Caddy hace TLS automático (Let's Encrypt).
 # Requiere Docker y un dominio apuntando a este VPS.
 #
-# Uso:
+# Uso (desde la RAÍZ del repo):
 #   1. cp .env.example .env  y completa los valores reales.
 #   2. docker compose up -d
 #
-# NOTA: si usas n8n Cloud, NO necesitas este archivo (infra gestionada por n8n).
+# NOTA: no incluye n8n ni saas; cada repo se despliega de forma independiente.
 
 services:
-  n8n:
-    image: n8nio/n8n:latest
+  carpinteria-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_WHATSAPP_NUMBER: ${CARPINTERIA_WHATSAPP_NUMBER}
+        NEXT_PUBLIC_INSTAGRAM_HANDLE: ${CARPINTERIA_INSTAGRAM_HANDLE}
+        NEXT_PUBLIC_EMAIL: ${CARPINTERIA_EMAIL}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:5678:5678"   # solo expuesto a localhost; Caddy hace el TLS
+      - "127.0.0.1:3000:3000"
     environment:
-      # ---- Identidad / seguridad ----
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}        # clave de cifrado de credenciales (obligatoria y estable)
-      - N8N_SECURE_COOKIE=true
-      - N8N_PROTOCOL=https
-      - N8N_HOST=${N8N_HOST}                            # ej. n8n.tudominio.com
-      - WEBHOOK_URL=https://${N8N_HOST}/
-      - N8N_EDITOR_BASE_URL=https://${N8N_HOST}/
-      # ---- Límites / operación ----
-      - N8N_METRICS=true                                # para monitoreo/UptimeRobot
-      - N8N_LOG_LEVEL=info
-      # ---- Variables de entorno del proyecto (fuente: README §Variables) ----
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-      - SUPABASE_DB_URL=${SUPABASE_DB_URL}
-      - META_VERIFY_TOKEN=${META_VERIFY_TOKEN}
-      - META_APP_SECRET=${META_APP_SECRET}
-      - WOMPI_PRIVATE_KEY=${WOMPI_PRIVATE_KEY}
-      - WOMPI_PUBLIC_KEY=${WOMPI_PUBLIC_KEY}
-      - WOMPI_EVENTS_SECRET=${WOMPI_EVENTS_SECRET}
-      - RESEND_API_KEY=${RESEND_API_KEY}
-    volumes:
-      - n8n_data:/home/node/.n8n
+      - CARPINTERIA_SUPABASE_URL=${CARPINTERIA_SUPABASE_URL}
+      - CARPINTERIA_SUPABASE_SERVICE_ROLE_KEY=${CARPINTERIA_SUPABASE_SERVICE_ROLE_KEY}
+      - CARPINTERIA_SUPABASE_ANON_KEY=${CARPINTERIA_SUPABASE_ANON_KEY}
+      - STAFF_CREDENTIALS=${STAFF_CREDENTIALS}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - LLM_PROVIDER=${LLM_PROVIDER}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_MODEL=${GROQ_MODEL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL}
     depends_on:
       - caddy
     networks:
-      - n8n_net
+      - carpinteria_net
 
   caddy:
     image: caddy:latest
@@ -50,18 +42,21 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      - CADDY_EMAIL=${CADDY_EMAIL}
+      - DOMAIN=${DOMAIN}
+      - CARPINTERIA_HOST=${CARPINTERIA_HOST}
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     networks:
-      - n8n_net
+      - carpinteria_net
 
 volumes:
-  n8n_data:
   caddy_data:
   caddy_config:
 
 networks:
-  n8n_net:
+  carpinteria_net:
     driver: bridge

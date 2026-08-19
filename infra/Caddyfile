@@ -1,37 +1,21 @@
-# Caddy como reverse proxy TLS para n8n (F1)
-# Termina HTTPS y reenvía a n8n en localhost:5678.
-# Let's Encrypt se obtiene/renueva solo (si el dominio apunta a este VPS).
+# Caddy como reverse proxy TLS para carpintería.
+# TLS automático (Let's Encrypt) por subdominio: carpinteria.{DOMAIN}.
+# Los certificados se gestionan solos (HTTP-01 challenge),
+# por eso el DNS debe resolver al VPS y los puertos 80/443 deben estar abiertos
+# ANTES de `up -d`. Mantener el A record en grey-cloud (Cloudflare) para no
+# romper el challenge.
+#
+# Enruta: carpinteria.{DOMAIN} -> carpinteria-web:3000.
 
 {
-    # Email para certificados Let's Encrypt
-    email admin@tudominio.com
-    # Desactiva si estás en staging para no golpear los límites de la CA
-    # acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+  email {$CADDY_EMAIL}
 }
 
-n8n.tudominio.com {
-
-    encode gzip
-
-    # Rate limiting básico (S6): protege login y webhooks expuestos.
-    # Limita a 10 req/seg por IP en todas las rutas.
-    @too_fast {
-        not remote_ip 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
-    }
-    # Nota: Caddy no tiene rate-limit por IP nativo en la edición comunitaria;
-    # si necesitas límites finos, usar el módulo `caddy-ratelimit` o un WAF perimetral.
-    # Lo mínimo: timeouts cortos para evitar agotamiento de conexiones.
-    timeouts {
-        read_body 30s
-        read 30s
-        write 30s
-        idle 2m
-    }
-
-    reverse_proxy n8n:5678 {
-        # HEAD/GET del webhook de Meta (A1) responde 200 rápido
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-    }
+carpinteria.{$DOMAIN} {
+  encode gzip
+  reverse_proxy carpinteria-web:3000 {
+    header_up X-Real-IP {remote_host}
+    header_up X-Forwarded-For {remote_host}
+    header_up X-Forwarded-Proto {scheme}
+  }
 }

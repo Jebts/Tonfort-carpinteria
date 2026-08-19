@@ -135,4 +135,4 @@ Con Esquema v9 y Estructura v5 estables (Wompi, B13, firma Meta, tokens_usados),
 - Ramas de agendamiento con Google Calendar.
 - El paso de `tokens_usados` ya está documentado como requisito de integridad — debe implementarse junto con el primer prototipo del agente.
 
-Insumos ya resueltos: LLM (Gemini 2.5 Flash), embeddings (1536d), contexto híbrido, Supabase Auth, precio COP por operador, Wompi + pago manual.
+Insumos ya resueltos: LLM configurable (`LLM_PROVIDER` groq/openai/mock), embeddings (1536d), contexto híbrido, Supabase Auth, precio COP por operador, Wompi + pago manual.

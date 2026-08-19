@@ -7,7 +7,7 @@
 3. **Activación manual documentada:** el staff (`usuarios_internos`) confirma transferencias/depósitos recibidos vía flujo B13, con auditoría completa (principio 3.8).
 4. **Chat Asistente con suscripción vencida:** el staff del negocio mantiene acceso a herramientas internas; solo la IA hacia clientes finales se pausa.
 5. **Recordatorio proactivo pre-vencimiento:** sigue diferido; el MVP incluye aviso mínimo por email al vencer el ciclo (C5/C6).
-6. **Reconciliación Google Calendar:** confirmado como diferido intencional, no olvidado — la BD sigue siendo fuente de verdad (3.3).
+6. **Sincronización / Reconciliación Google Calendar:** el sync **BD → Calendar** está implementado (workflow `G1 - sync-calendar` + `/panel/agenda`, B2.4); la reconciliación **Calendar → BD** tras fallos de red queda diferida intencionalmente — la BD sigue siendo fuente de verdad (3.3).
 
 ---
 
@@ -105,7 +105,7 @@ Cuando un `usuarios_empresa` pasa a `activo = FALSE`, cualquier línea de WhatsA
 - **Recordatorio proactivo de renovación** (antes de vencer, más allá del aviso de 90% de tokens y del aviso al vencer) — se difiere hasta justificar la complejidad con volumen real.
 - **Multi-moneda** en el precio por operador.
 - **Automatización del alta de números de WhatsApp** desde el dashboard.
-- **Reconciliación automática Google Calendar** tras fallos de sincronización (principio 3.3 mantiene BD como fuente de verdad; el proceso correctivo se difiere).
+- **Reconciliación automática Google Calendar (Calendar → BD)** tras fallos de sincronización (principio 3.3 mantiene BD como fuente de verdad; el proceso correctivo se difiere). El sync BD → Calendar ya está cubierto por `G1 - sync-calendar`.
 
 Diferir algo aquí es una decisión explícita, documentada, y revisable — no un vacío accidental.
 

@@ -1,60 +1,60 @@
-# SaaS Atención al Cliente + Agendamiento (n8n + Supabase)
+# tonfort — Carpintería (landing + panel staff)
 
-SaaS multi-tenant de atención al cliente por WhatsApp y agendamiento en Google Calendar,
-orquestado en n8n con Supabase como fuente de verdad y **Gemini 2.5 Flash** (Google AI
-Studio free tier) como LLM conversacional.
+Next.js 16 (App Router) + React 19 + Supabase (single-tenant) para el sitio de
+carpintería artesanal. Incluye:
+- Landing pública (portafolio, servicios, historia, contacto).
+- Agenda pública de citas (bloques de 2 h).
+- Panel de staff (proyectos, clientes, citas, configuración).
+- Asistente de IA para redacción de portafolio (LLM configurable: mock/groq/openai).
+
+## Stack
+
+- Next.js 16 / React 19 / TypeScript
+- Tailwind CSS v4 + shadcn/ui
+- Supabase (single-tenant, propio de la carpintería)
+- Caddy (reverse proxy + TLS automático)
 
 ## Documentación
 
-- `docs/Constitucion_del_Proyecto.md` — principios no negociables (fuente de autoridad máxima).
-- `docs/Esquema_de_Base_de_Datos_v9.md` — DDL + RLS + triggers (versión vigente del esquema).
-- `docs/Estructura_Logica_de_Solicitudes.md` — flujos A/B/C/D (v5, vigente).
-- `docs/Herramientas_del_Proyecto.md` — stack y variables de entorno (v5, vigente).
-- `docs/Instrucciones_del_Proyecto.md` — reglas de construcción n8n (v4, vigente).
-- `docs/Arquitectura_del_Proyecto.md` — arquitectura de carpetas y definición de F3.
-- `docs/Guia_Conexion_n8n_Supabase.md` — paso a paso de F3 (conexión n8n ↔ Supabase).
+- `docs/Constitucion_del_Proyecto.md` — principios no negociables.
+- `docs/Arquitectura_del_Proyecto.md` — arquitectura de carpetas.
+- `docs/Convenciones_Codigo.md` — estándares de código.
+- `docs/Instrucciones_del_Proyecto.md` — reglas de construcción.
+- `docs/Organigrama.md` — roles y equipo.
+- `docs/README.md` — índice de documentación.
+- `docs/RUTAS.md` — rutas de la app.
+- `db/docs/Esquema_de_Base_de_Datos_v9.md` — DDL + RLS + triggers.
 
-Jerarquía de autoridad: Constitución > Esquema vigente > Estructura vigente > Herramientas > conversación actual.
+## Desarrollo
 
-## Variables de entorno y secretos
+```bash
+npm install
+npm run dev        # desarrollo
+npm run build      # producción
+npm run lint       # ESLint
+npm run typecheck  # tsc --noEmit
+npm test           # Vitest unitario
+```
 
-Matriz de secretos (fuente: `docs/Herramientas_del_Proyecto.md` §10, v5). Todos los secretos
-viven en un gestor de secretos / variables de entorno de n8n; nada se commitea.
+## Variables de entorno
 
-| Variable / secreto | Dónde vive | Propósito |
-|---|---|---|
-| `META_VERIFY_TOKEN` | Variable de entorno en n8n | Verificación inicial del webhook de Meta (A1) |
-| `META_APP_SECRET` | Variable de entorno en n8n | Validación HMAC `X-Hub-Signature-256` en A2 (fallback si la integración no tiene `webhook_secret`) |
-| Credencial `Postgres - app_router` | Credencial de n8n | Excepciones documentadas a RLS |
-| Credencial `Postgres - app_tenant` | Credencial de n8n | Operaciones con RLS |
-| `SUPABASE_URL` | Variable de entorno en n8n | Endpoint Supabase (DB + Auth) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Credencial de n8n (máxima sensibilidad) | Admin API Supabase Auth |
-| `SUPABASE_ANON_KEY` | Configuración del dashboard | Login contra Supabase Auth |
-| Clave de cifrado de `credenciales_encriptadas` | Variable de entorno / gestor de secretos | Cifrar/descifrar tokens OAuth e integraciones |
-| `webhook_secret` por integración | Tabla `integraciones` | Firma HMAC por línea de WhatsApp activa |
-| `GEMINI_API_KEY` | Credencial de n8n | LLM conversacional (Gemini 2.5 Flash vía Google AI Studio) |
-| API key del proveedor de embeddings | Credencial de n8n | Embeddings de 1536d para `contenido_rag` |
-| `WOMPI_PRIVATE_KEY` | Credencial de n8n | Crear transacciones (B11) |
-| `WOMPI_PUBLIC_KEY` | Configuración del dashboard | Widget/checkout frontend (si aplica) |
-| `WOMPI_EVENTS_SECRET` | Variable de entorno en n8n | Validar firma del webhook de Wompi (B12) |
-| Credencial de Resend (o SES) | Credencial de n8n | Notificaciones internas por email |
-| `SUPABASE_DB_URL` | Variable de entorno / credencial de n8n | Conexión Postgres Supabase |
-| Webhook de monitoreo (UptimeRobot) | Configuración externa | Alertar si n8n deja de responder |
+Copia `.env.example` a `.env` y completa los valores. Las variables se dividen en:
 
-## Estado de implementación
+- **Públicas (build-time):** `NEXT_PUBLIC_WHATSAPP_NUMBER`, `NEXT_PUBLIC_INSTAGRAM_HANDLE`, `NEXT_PUBLIC_EMAIL`
+- **Backend Supabase:** `CARPINTERIA_SUPABASE_URL`, `CARPINTERIA_SUPABASE_SERVICE_ROLE_KEY`, `CARPINTERIA_SUPABASE_ANON_KEY`
+- **Auth staff:** `STAFF_CREDENTIALS`, `SESSION_SECRET`
+- **LLM:** `LLM_PROVIDER`, `GROQ_API_KEY`, `GROQ_MODEL`, `OPENAI_API_KEY`, `OPENAI_MODEL`
 
-Ruta crítica sugerida: `F0 → F1 → F2 → F3 → F4 → F5`.
+> Nota: las variables de LLM se leen **sin prefijo** `CARPINTERIA_*`.
 
-- **F0** (documentación y entorno base): completado — Gemini 2.5 Flash reflejado en docs; repo inicializado.
-- **F1** (infra n8n self-hosted + Caddy): completado.
-- **F2** (conexión a BD + esquema v9.1 y fix linter 0010/0013/0011): en ejecución — reinit limpio en Supabase pendiente de aplicar; `sql/schema/esquema_v9.sql` idempotente listo. (0014 `extension_in_public` queda como WARN documentado).
-- **F3** (conexión n8n ↔ Supabase: credenciales + vars de entorno + smoke test RLS): en ejecución manual. Ver `docs/Guia_Conexion_n8n_Supabase.md`.
-- **F4** (workflows n8n A1/A2/A3 + Agente IA + Error Handler): completado en git.
+## Despliegue
 
-## Convenciones
+```bash
+# 1. Configura DNS: carpinteria.{DOMAIN} -> IP del VPS
+# 2. cp .env.example .env y completa valores reales
+# 3. bash infra/scripts/vps-deploy.sh
+```
 
-- Un workflow de n8n por solicitud documentada (A1, A2, B1, C5, …); sub-workflows (Agente IA, D) aparte.
-- Nombre de workflow: `{sección}{número} - {nombre corto en minúsculas con guiones}`.
-- Cada nodo se nombra con el número de paso del documento: `{número de paso}. {qué hace}`.
-- Credenciales Postgres fijas: `Postgres - app_router` / `Postgres - app_tenant`.
-- Error Workflow común: `_Error Handler - notificacion`.
+## Subdominios
+
+- `carpinteria.{DOMAIN}` — sitio principal
