@@ -3,6 +3,16 @@
 Landing y panel staff para la carpintería Tonfort. Next.js 16 (App Router) + Supabase
 (single-tenant) + Caddy.
 
+## Índice de documentación
+
+- `docs/ESTRUCTURA.md` — sistema de carpetas y dónde ubicar cada artifact
+- `docs/Constitucion_del_Proyecto.md` — principios no negociables
+- `docs/Arquitectura_del_Proyecto.md` — arquitectura de carpetas
+- `docs/Convenciones_Codigo.md` — estándares de código
+- `docs/Instrucciones_del_Proyecto.md` — reglas de construcción
+- `docs/Organigrama.md` — roles y equipo
+- `docs/RUTAS.md` — rutas y contrato de backend
+
 ## Cómo correr (desarrollo local)
 
 ```bash
@@ -43,12 +53,13 @@ LLM (server-side, sin prefijo):
 
 ## Estructura
 
-- `app/` — rutas Next.js (App Router)
-- `components/` — componentes UI
-- `lib/` — lógica de negocio (Supabase, auth, LLM)
-- `db/` — scripts de BD y seeds
-- `docs/` — documentación de la app
+- `app/` — rutas Next.js (App Router): landing pública + panel staff + API Route Handlers
+- `components/` — componentes UI (`tonfort/` = de dominio, `ui/` = primitivos shadcn)
+- `lib/` — lógica de negocio (Supabase, auth, citas, proyectos, LLM, contact, validators)
+- `hooks/` — hooks de React
+- `content/` — contenido estático (markdown/JSON)
+- `styles/` — estilos globales (`app/globals.css` importado por `app/layout.tsx`)
+- `docs/` — documentación de la app (ver `docs/ESTRUCTURA.md`)
 - `infra/` — docker-compose, Caddyfile, scripts de deploy
-- `scripts/` — scripts auxiliares del front
 - `tests/` — tests unitarios (Vitest)
 - `public/` — assets estáticos

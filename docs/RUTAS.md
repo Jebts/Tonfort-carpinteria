@@ -54,5 +54,7 @@ Las `NEXT_PUBLIC_*` (WhatsApp/IG/email) se hornean en build vía build args.
 
 ## Migración
 
-- `db/sql/esquema_carpinteria.sql` — tablas `clientes`, `citas`, `proyectos` + RLS.
-- `db/sql/seed_demo.sql` — proyectos demo + 1 cliente/cita de ejemplo.
+El esquema de base de datos (tablas `clientes`, `citas`, `proyectos` + RLS) y los
+datos de ejemplo (seed demo) viven en el proyecto **Supabase propio de la carpintería**,
+no en este repo. El DDL se aplica directamente en Supabase; no hay scripts SQL
+versionados en el código.

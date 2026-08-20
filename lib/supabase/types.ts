@@ -1,5 +1,5 @@
 // Tipos de dominio de la carpintería (single-tenant).
-// Espejo de las tablas en db/sql/esquema_carpinteria.sql.
+// Espejo de las tablas en el proyecto Supabase propio de la carpintería.
 
 export type FaseCliente =
   | "descubrimiento"

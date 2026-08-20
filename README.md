@@ -23,7 +23,6 @@ carpintería artesanal. Incluye:
 - `docs/Organigrama.md` — roles y equipo.
 - `docs/README.md` — índice de documentación.
 - `docs/RUTAS.md` — rutas de la app.
-- `db/docs/Esquema_de_Base_de_Datos_v9.md` — DDL + RLS + triggers.
 
 ## Desarrollo
 
