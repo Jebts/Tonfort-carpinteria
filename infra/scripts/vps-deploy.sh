@@ -43,8 +43,8 @@ fi
 REMOTE="$VPS_USER@$VPS_HOST"
 REPO_ROOT="$(cd "$DIR/../.." && pwd)"
 SSH_CMD_BASE="ssh -p $VPS_SSH_PORT $SSH_KEY_OPT $REMOTE"
-RSYNC_DEST="$(dirname "$VPS_REMOTE_DIR")"
-PROJECT_NAME="$(basename "$RSYNC_DEST")"
+RSYNC_DEST="$VPS_REMOTE_DIR"
+PROJECT_NAME="$(basename "$VPS_REMOTE_DIR")"
 
 RSYNC_CMD="rsync -az --delete \
   --exclude='.DS_Store' \
