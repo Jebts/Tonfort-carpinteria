@@ -140,6 +140,7 @@ export default function GestionCitasPage() {
       nombre_solicitante: cita.nombre_solicitante ?? undefined,
       email: cita.email ?? undefined,
       telefono: cita.telefono ?? undefined,
+      direccion: cita.direccion ?? undefined,
       descripcion: cita.descripcion ?? undefined,
       fecha_hora: format(parseISO(cita.fecha_hora), "yyyy-MM-dd'T'HH:mm"),
       duracion_minutos: cita.duracion_minutos,
@@ -242,19 +243,20 @@ export default function GestionCitasPage() {
                   <TableHead>Fecha/Hora</TableHead>
                   <TableHead>Duración</TableHead>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Dirección</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {cargando ? (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                    <td colSpan={8} className="py-8 text-center text-muted-foreground">
                       Cargando citas...
                     </td>
                   </tr>
                 ) : citasFiltradas.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                    <td colSpan={8} className="py-8 text-center text-muted-foreground">
                       No hay citas en este período.
                     </td>
                   </tr>
@@ -289,6 +291,7 @@ export default function GestionCitasPage() {
                         )}
                       </TableCell>
                       <TableCell>{cita.cliente_nombre ?? "—"}</TableCell>
+                      <TableCell>{cita.direccion ?? "—"}</TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -402,6 +405,16 @@ export default function GestionCitasPage() {
                 value={form.telefono ?? ""}
                 onChange={(e) => setForm({ ...form, telefono: e.target.value })}
                 placeholder="+34 600 000 000"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="direccion">Dirección de la visita</Label>
+              <Input
+                id="direccion"
+                value={form.direccion ?? ""}
+                onChange={(e) => setForm({ ...form, direccion: e.target.value })}
+                placeholder="Ej. Cra 10 # 20-30, Bogotá"
               />
             </div>
 

@@ -17,6 +17,9 @@ El sistema distingue tres roles de staff, definidos en la tabla `usuarios` (camp
 | Activar/desactivar link privado de propuesta | ✅ (con video + frame centro) | ✅ | ✅ |
 | Publicar propuesta en Portafolio público | ❌ | ✅ (solo si `enviada`) | ❌ |
 | Publicar proyecto en Portafolio (`publicado`) | ❌ | ✅ | ❌ |
+| Editar `sede` / `categoria` / `portada_url` de un proyecto publicado | ❌ | ✅ | ❌ |
+| Subir / borrar fotos de la galería del proyecto | ❌ | ✅ | ❌ |
+| Editar los visores de la landing (`/staff/diseno/visores`) | Lectura | **Escritura** (upsert por `slot`) | ❌ |
 | Crear cotizaciones (conectar proyecto + cliente) | ❌ | ✅ | ❌ |
 | Gestionar agenda y citas | ❌ | ✅ | ✅ |
 | Gestión de usuarios staff (crear/editar/desactivar) | ❌ | ✅ | ❌ |
@@ -64,6 +67,39 @@ Las propuestas de diseño se gestionan en la tabla `propuestas_3d`. Cada propues
   3. El proyecto al que pertenece tiene `publicado = true` para ser indexado en `/portafolio`.
 - **Diseñadores**: Solo pueden activar links privados para compartir propuestas con clientes; no pueden publicar en el portafolio público.
 
+### La ficha pública del proyecto es plana
+
+El portafolio público ya **no** es un árbol de proyecto → producto → propuesta. Cada proyecto
+publicado tiene **una** página, `/portafolio/[sede]/[slug]`, con portada, galería y —si el
+proyecto tiene propuesta publicada— un visor. Consecuencias:
+
+- **Sede** (`proyectos.sede`, catálogo cerrado `santa_marta` / `bogota`): decide en qué rama del
+  portafolio aparece. Es `NOT NULL DEFAULT 'santa_marta'`, así que los proyectos existentes se
+  rellenan solos. `bogota` es histórico: la sede ya no existe y solo aporta fotos al catálogo.
+  Cambiar la sede mueve el proyecto entre `/portafolio/santa-marta` y `/portafolio/bogota`.
+- **Categoría** (`proyectos.categoria`, catálogo cerrado de 7 valores): **un solo valor por
+  proyecto**, y **nullable**. Los proyectos existentes salen como "Sin categoría" hasta que
+  staff asigne una; ninguno queda fuera del listado por no tenerla, solo del filtro
+  `?categoria=`. El staff puede volver a dejarla en nulo a propósito.
+- **Portada** (`proyectos.portada_url`): imagen a sangre de la ficha. Si es nula, la tarjeta usa
+  `FALLBACK_PORTADA` (`/tonfort-closet-render.png`); la ficha se renderiza sin portada a sangre.
+- **Galería** (`proyectos_fotos`): orden explícito por `orden`. El alta de cada foto calcula
+  `max(orden) + 1`, así que la foto nueva siempre queda al final y el orden público nunca es
+  indeterminado.
+
+Quién puede tocar qué:
+
+| Acción | Rol |
+|---|---|
+| Cambiar `sede`, `categoria`, `portada_url`, `publicado`, título o descripción | `admin` (endpoint `/api/staff/administracion/portafolio/proyectos/[id]`) |
+| Subir, usar como portada o eliminar una foto de la galería | `admin` (endpoints `.../fotos` y `.../fotos/[fotoId]`) |
+
+Las categorías válidas son un enum cerrado en la BD (`categoria_mueble`) y un array literal
+duplicado en `CATEGORIAS_MUEBLE_SCHEMA` (`lib/validators.ts`) para Zod, con `lib/categorias.ts`
+como copia única de labels y copy. Si se añade una categoría hay que tocar las tres: enum,
+array de Zod y catálogo de `lib/categorias.ts` (este último lanza en tiempo de carga si se
+desincroniza).
+
 ### Animaciones Secundarias (`propuestas_3d_animaciones`)
 
 - Cada propuesta puede contener clips de video complementarios que muestran detalles específicos o interacciones:
@@ -83,13 +119,79 @@ Las propuestas de diseño se gestionan en la tabla `propuestas_3d`. Cada propues
 | `aceptada` | Confirmada por el staff; tiene `meet_link`. El público no la puede mover. |
 | `cancelada` | Cancelada; oculta para el público, visible solo en staff Agenda. |
 
+### Modalidades de cita
+
+La agenda pública ofrece exactamente **2 modalidades**, y son las filas de
+`modalidades_cita` con `activo = true`. El catálogo vive en la BD, no en el código: la página
+`/agenda/modalidad` lo lee en cada request y, si no hay exactamente 2 activas, muestra
+"La agenda está en mantenimiento" con un enlace a WhatsApp en vez de un flujo roto.
+
+| slug | Modalidad | `costo` | `duracion_minutos` | Qué incluye |
+|---|---|---|---|---|
+| `virtual` | Virtual | 0 | 90 | Videollamada en vivo, prueba de iluminación en tiempo real, estimación de costos |
+| `presencial` | Presencial | 70000 | 120 | Visita a tu domicilio, toma de medidas, diagnóstico del espacio |
+
+Reglas del catálogo:
+
+- `slug` es la clave de negocio: es lo que viaja por `?modalidad=` y lo que `POST /api/citas`
+  resuelve contra `getModalidadPorSlug()`. `nombre` y `descripcion` son copy y pueden cambiar
+  sin tocar código.
+- La columna `nombre` también es única en la práctica: el `INSERT` de la migración usa
+  `ON CONFLICT DO NOTHING`, así que las filas no se duplican si ya existen con esos nombres.
+- No hay más modalidades sin cambiarlas las tres cosas a la vez: la migración, el catálogo en
+  BD y `BULLETS`/`ICONO`/`ETIQUETA` en `app/agenda/modalidad/page.tsx` (que tienen un `default`
+  por si acaso).
+
+### El precio lo pone el servidor, nunca el cliente
+
+- `modalidades_cita.costo` es la **única fuente de verdad** del precio de una cita.
+- El formulario público no manda precio. `POST /api/citas` resuelve la modalidad por `slug` y,
+  si no existe, devuelve error antes de tocar la BD.
+- Al crear la cita el servidor copia dos campos del catálogo a la fila:
+  `costo` → `citas.precio_copiado`, `duracion_minutos` → `citas.duracion_minutos`.
+- `precio_copiado` es una **fotografía del precio en el momento de la reserva**: si mañana sube
+  el costo de la visita presencial, las citas ya reservadas conservan el precio con el que se
+  contrató. Staff edita `precio_copiado` desde `/staff/gestion/citas` si necesita renegociar;
+  el público no puede escribirlo.
+
+### Disponibilidad por modalidad
+
+El slot se ocupa **por modalidad**, no en bloque:
+
+- `calcularDisponibilidad(desde, hasta, { modalidadId })` resuelve el estado de cada bloque
+  mirando solo las citas de esa modalidad. Una cita `virtual` **no** bloquea el mismo bloque
+  para una cita `presencial`, y viceversa.
+- `GET /api/citas` acepta `?modalidad=<slug|id>`. Sin el parámetro devuelve la disponibilidad
+  agregada; con él devuelve la de esa modalidad. En ambos casos nunca expone citas `canceladas`
+  ni datos de contacto.
+- `virtual` dura 90 minutos y `presencial` 120: la rejilla de bloques se calcula con la duración
+  de la modalidad elegida, no con la de 120 por defecto.
+- `/agenda/horario` sin un `?modalidad=` que resuelva contra el catálogo responde **404**. No es
+  un calendario vacío: es un error de navegación.
+
+### Dirección de la cita presencial
+
+- `citas.direccion` es **nullable** y se rellena desde el panel de staff
+  (`/staff/gestion/citas`), no desde el formulario público: la dirección se acuerda por
+  WhatsApp y al crear la cita la modalidad aún no se conoce.
+- El formulario público se queda en 3 campos (nombre, teléfono, descripción). Es una decisión
+  ya implementada, no un pendiente.
+- El panel muestra el campo siempre, con la etiqueta "Dirección de la visita", y muestra el
+  valor **también en la tabla de la lista**, para que el diseñador lo vea al confirmar la cita.
+- El PATCH de staff lo valida con `citaStaffSchema`: máximo 400 caracteres, nullable.
+
 ### Acciones sobre citas (staff)
+
 `PATCH /api/staff/citas/[id]` con body `{ "accion": "aceptar" | "cancelar" | "mover" | "eliminar", "fecha_hora"?: "ISO" }`.
 
 - `aceptar` — la cita pasa a `aceptada`, se genera o asigna `meet_link`.
 - `cancelar` — la cita pasa a `cancelada`.
 - `mover` — reprograma la cita; el campo `movida = true` y `fecha_hora_anterior` guarda la fecha original.
 - `eliminar` — elimina físicamente. Solo permitido si la cita está `cancelada` o `en_espera`.
+
+Sin `accion`, el mismo handler valida el cuerpo con `citaStaffSchema.partial()` y permite editar
+campos sueltos (`direccion`, `notas`, `telefono`, `descripcion`, `modalidad_id`, …). Es la vía
+que usa el formulario del panel.
 
 ## 4. Fases de cliente
 

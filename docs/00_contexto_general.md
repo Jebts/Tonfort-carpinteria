@@ -29,9 +29,9 @@ El sistema implementa una **plataforma de presentación interactiva basada en vi
 ### Características actuales (código real)
 
 - **Landing pública** — servicios, portafolio de proyectos, historia, contacto.
-- **Portafolio público interactivo** — exploración de proyectos, productos y propuestas mediante visor de video sincronizado (`VideoViewer`).
+- **Portafolio público por sede** — `/portafolio/[sede]` lista los proyectos publicados de esa sede con filtro por categoría; `/portafolio/[sede]/[slug]` muestra una **ficha plana**: portada a sangre, galería de fotos (`proyectos_fotos`) y, solo en Santa Marta, un visor de video sincronizado (`VideoViewer`) con la primera propuesta publicada.
 - **Enlace privado de propuesta** — `/propuestas/[token]` accesible sin login con token criptográfico seguro.
-- **Agenda pública de citas** — reserva de citas en bloques de 2 horas (lunes a sábado) con selector de modalidad.
+- **Agenda pública de citas** — reserva en 2 pasos (modalidad → horario) con la duración y el costo de cada modalidad (`modalidades_cita.duracion_minutos` y `.costo`).
 - **Panel de staff** — gestión de proyectos, clientes, agenda de citas, usuarios y taller de diseño de propuestas.
 - **Asistente de IA** para redacción de portafolio (LLM configurable: mock/groq/openai).
 - **Auth de staff** vía HMAC cookie (`SESSION_SECRET`) con credenciales en BD (tabla `usuarios`, scrypt).
@@ -41,17 +41,17 @@ El sistema implementa una **plataforma de presentación interactiva basada en vi
 
 | Término | Definición |
 |---|---|
-| **Proyecto** | Unidad de trabajo con **un solo cliente** (`proyectos`). Puede ser privado o publicado en el portafolio público (`publicado = true`). |
+| **Proyecto** | Unidad de trabajo (`proyectos`), con `cliente_id` **opcional** (nullable desde la migración `20260922000001`; se creaba sin cliente y se asigna después). Puede ser privado o publicado en el portafolio público (`publicado = true`), y se publica en una sede (`sede`) con una categoría (`categoria`, nullable). |
 | **Producto** | Pieza de mobiliario o ambiente dentro de un proyecto (`productos`, ej. Cocina Isla, Closet Walk-in). |
 | **Propuesta** | Alternativa de diseño en video (`propuestas_3d`). Contiene video global, punto de reposo (`frame_centro_ms`), estado (`borrador`, `lista`, `enviada`), enlace privado y publicación a portafolio. |
 | **Animación** | Clip de video secundario (`propuestas_3d_animaciones`) asociado a una propuesta. Puede ser de tipo `zoom` (acercamiento a detalle) o `interaccion` (movimiento de partes, iluminación). |
 | **Video Global** | Video principal en barrido continuo que muestra el producto completo. Se reproduce en bucle hasta que el usuario interactúa. |
 | **Frame Centro** | Marca de tiempo en milisegundos (`frame_centro_ms`) que define la vista frontal o de reposo del producto. |
 | **Cliente** | Persona que agenda una cita o para quien se desarrolla un proyecto (`clientes`). |
-| **Cita** | Reserva de tiempo en la agenda (`citas`, bloques de 2 horas) con modalidad (`modalidades_cita`). |
+| **Cita** | Reserva de tiempo en la agenda (`citas`) con modalidad (`modalidades_cita`), precio copiado al reservar (`precio_copiado`) y, en las presenciales, `direccion` de la visita. |
 | **Staff** | Usuario interno autenticado en el panel (`usuarios`). Tres roles: `admin` (acceso completo), `asesor` (agenda, citas, clientes) y `disenador` (proyectos, productos, propuestas de video). |
 | **Enlace Privado** | URL única con token criptográfico (`/propuestas/[token]`) para compartir la propuesta con el cliente sin necesidad de login. |
-| **Portafolio** | Catálogo público (`/portafolio`) que expone proyectos publicados y sus propuestas aprobadas. |
+| **Portafolio** | Catálogo público por sede (`/portafolio` redirige a `/portafolio/santa-marta`) que expone los proyectos publicados de esa sede, filtrables por `categoria`. La ficha de cada proyecto es plana: no expone el árbol de productos y propuestas del taller, solo portada, galería y un visor. |
 
 ## 3. Arquitectura de alto nivel
 
