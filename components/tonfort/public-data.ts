@@ -6,6 +6,33 @@ import { esCategoriaMueble } from "@/lib/categorias"
 // de la landing y del portafolio. Antes devolvía `category: "Sin categoría"` e
 // `image: "/placeholder.svg"` para todo, que es lo que vaciaba los filtros.
 
+export interface BandSede {
+  src: string
+  eyebrow: string
+  title: string
+  copy: string
+}
+
+// Copy e imagen de cabecera de cada sede del portafolio. Vive aquí, y no en
+// `public-animations.tsx`, porque ese módulo es `"use client"`: un Server
+// Component recibe sus exports como referencias de cliente, sin valor, y
+// leer `BAND_SEDE[sede].src` reventaba con "Cannot read properties of
+// undefined" en `/portafolio/[sede]`.
+export const BAND_SEDE: Record<SedeTaller, BandSede> = {
+  santa_marta: {
+    src: "/tonfort-hero-plant.png",
+    eyebrow: "Santa Marta",
+    title: "Donde la luz llega primero.",
+    copy: "El taller y los proyectos que salieron de esta costa.",
+  },
+  bogota: {
+    src: "/history-workshop-light.png",
+    eyebrow: "Bogotá",
+    title: "Antes de la costa.",
+    copy: "Los primeros trabajos, cuando el taller era otro.",
+  },
+}
+
 export interface PublicProject {
   id: string
   slug: string

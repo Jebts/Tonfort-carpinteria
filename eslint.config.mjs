@@ -9,6 +9,7 @@ export default tseslint.config(
     ignores: [
       '**/node_modules/',
       '**/.next/',
+      '**/.next.stale-*/',
       '**/dist/',
       '**/.kilo/',
       'cotizacion/**',

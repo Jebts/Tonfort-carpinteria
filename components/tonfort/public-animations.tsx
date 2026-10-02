@@ -225,25 +225,9 @@ export function PageHero({
   )
 }
 
-// Envoltorios de `CinematicBand` con la imagen y el copy de cada sede del
-// portafolio. Los datos viven aquí y no en la página para no duplicarlos.
-export const BAND_SEDE: Record<
-  "santa_marta" | "bogota",
-  { src: string; eyebrow: string; title: string; copy: string }
-> = {
-  santa_marta: {
-    src: "/tonfort-hero-plant.png",
-    eyebrow: "Santa Marta",
-    title: "Donde la luz llega primero.",
-    copy: "El taller y los proyectos que salieron de esta costa.",
-  },
-  bogota: {
-    src: "/history-workshop-light.png",
-    eyebrow: "Bogotá",
-    title: "Antes de la costa.",
-    copy: "Los primeros trabajos, cuando el taller era otro.",
-  },
-}
+// Los datos de `BAND_SEDE` viven en `public-data.ts`: este módulo es
+// `"use client"` y un Server Component no puede leer un objeto plano
+// exportado desde aquí (le llega como referencia de cliente, sin valor).
 
 /** `vivid` usa el color de marca más saturado (`--royal-bright` = #3769e6),
  *  pensado para el CTA principal del hero y de la navbar. */

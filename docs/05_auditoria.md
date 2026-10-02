@@ -133,16 +133,20 @@ Baseline registrado al abrir el plan de cierre del refactor (ver §5.1 para las 
 | Métrica / Comando | Resultado | Estado |
 |---|---|---|
 | `npm run typecheck` (`tsc --noEmit`) | 0 errores | ✅ Aprobado |
-| `npx vitest run` | 46 archivos de test, 265 pruebas, todas pasan | ✅ Aprobado |
+| `npx vitest run` | 47 archivos de test, 296 pruebas, todas pasan | ✅ Aprobado |
 | `npm run build` (Next.js 16 Turbopack) | OK, 51 páginas | ✅ Aprobado |
-| `npx eslint` sobre los archivos del refactor | 0 errores | ✅ Aprobado |
-| `npm run lint` (repo entero) | **~26 533 errores preexistentes** | ⚠️ **Fuera de alcance** |
-| `npm run db:check` | 7 de 11 tablas OK; 4 `✗ FALTA` | ⚠️ **Migraciones pendientes** |
+| `npm run lint` (repo entero) | **0 errores, 103 warnings** | ✅ Aprobado |
 
-`npm run lint` no es una regresión del refactor: los errores vienen sobre todo de
-`app/staff/**`, `hooks/use-toast.ts`, `components/ui/sonner.tsx` y de la carpeta `nueva_UI_publica/`
-ya eliminada. Está explícitamente fuera de alcance por decisión del plan; este número queda
-registrado como línea base para un plan futuro.
+El repo **no tiene deuda de lint.** La cifra de "~26 533 errores" que circulaba en el plan de
+cierre era un artefacto de medición, no código: provenía del directorio obsoleto
+`.next.stale-110852/` (870 MB de JavaScript generado por webpack que nadie ignoraba, porque
+`eslint.config.mjs` solo excluía `**/.next/` y no `**/.next.stale-*/`). ESLint escaneaba sus
+chunks y reportaba un `no-undef` por cada símbolo generado. Ese directorio se borró en la Ola 2
+y `**/.next.stale-*/` quedó añadido a los `ignores` de ESLint, de modo que la medición ya
+refleja el código real.
+
+`npm run db:check` queda fuera de esta tabla: 7 de 11 tablas OK y 4 `✗ FALTA` hasta que se
+apliquen las migraciones pendientes (ver `docs/02_modelo_datos.md` §7).
 
 ---
 
@@ -232,17 +236,16 @@ Estos parecían huérfanos en el plan original, pero están referenciados por c�
 
 ## 5. Pendientes abiertos
 
-### 5.1 Lint del repo entero
+### 5.1 Aviso de build
 
-`npm run lint` reporta ~26 533 errores preexistentes, concentrados en `app/staff/**`,
-`hooks/use-toast.ts` y `components/ui/sonner.tsx`. **Fuera de alcance por decisión explícita**
-del plan. El refactor del espacio público no añade ni quita errores: `npx eslint` sobre sus
-archivos da 0.
+`metadataBase` no está configurado en los metadatos de la raíz. No es un error —el build pasa—
+pero Next.js avisa por consola y las URLs absolutas de Open Graph y Twitter se resuelven contra
+el origen del build en lugar del dominio canónico. Se arregla añadiendo `metadataBase` a
+`app/layout.tsx` (o `NEXT_PUBLIC_SITE_URL` si se quiere externalizar).
 
-**Aviso de build:** `metadataBase` no está configurado en los metadatos de la raíz. No es un
-error —el build pasa— pero Next.js avisa por consola y las URLs absolutas de Open Graph y
-Twitter se resuelven contra el origen del build en lugar del dominio canónico. Se arregla
-añadiendo `metadataBase` a `app/layout.tsx` (o `NEXT_PUBLIC_SITE_URL` si se quiere externalizar).
+Los 103 `warning` que quedan en `npm run lint` (imports sin usar, imports fuera de orden,
+expresiones sin efecto) son preexistentes y no bloquean nada. Son deuda de menor gravedad y
+queda fuera de alcance del refactor del espacio público.
 `app/sitemap.ts` ya lee `NEXT_PUBLIC_SITE_URL` con fallback a `https://tonfort.co`.
 
 ### 5.2 Migraciones escritas pero no aplicadas ⚠️

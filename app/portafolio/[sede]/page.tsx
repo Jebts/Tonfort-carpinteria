@@ -4,12 +4,15 @@ import type { Metadata } from "next"
 import { PublicNavbar } from "@/components/tonfort/public-navbar"
 import { PublicFooter } from "@/components/tonfort/public-footer"
 import {
-  BAND_SEDE,
   CinematicBand,
   ProjectCard,
 } from "@/components/tonfort/public-animations"
 import { getProyectosPublicados } from "@/lib/portfolio-service"
-import { FALLBACK_PORTADA, parseCategoriaParam } from "@/components/tonfort/public-data"
+import {
+  BAND_SEDE,
+  FALLBACK_PORTADA,
+  parseCategoriaParam,
+} from "@/components/tonfort/public-data"
 import { CATEGORIAS } from "@/lib/categorias"
 import {
   ETIQUETA_CATEGORIA,
