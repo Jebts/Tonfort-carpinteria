@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Pencil, Plus, Trash2, Globe, Eye, EyeOff } from "lucide-react"
+import { Pencil, Trash2, Globe, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,10 +23,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import type { Proyecto } from "@/lib/supabase/types"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import type { CategoriaMueble, Proyecto, SedeTaller } from "@/lib/supabase/types"
+import {
+  CATEGORIAS_MUEBLE,
+  ETIQUETA_CATEGORIA,
+  ETIQUETA_SEDE,
+  SEDES,
+} from "@/lib/supabase/types"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { AIAssistButton } from "@/components/tonfort/ai-assist-button"
 import { ProyectoPreview } from "@/components/tonfort/proyecto-preview"
+import { ProyectoFotos } from "@/components/tonfort/staff/proyecto-fotos"
+
+const SIN_CATEGORIA = "sin_categoria"
 
 export default function AdministracionPortafolioPage() {
   const [proyectos, setProyectos] = useState<Proyecto[]>([])
@@ -222,11 +238,12 @@ export default function AdministracionPortafolioPage() {
       )}
 
       <Dialog open={!!editando} onOpenChange={(o) => !o && setEditando(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Editar proyecto</DialogTitle>
             <DialogDescription>
-              Configura el proyecto y define si estará visible públicamente en el portafolio.
+              Configura el proyecto, su sede, su categoría de mueble, su portada y define si
+              estará visible públicamente en el portafolio.
             </DialogDescription>
           </DialogHeader>
           {editando && (
@@ -264,6 +281,9 @@ function ProyectoForm({
   const [descripcion, setDescripcion] = useState(proyecto.descripcion ?? "")
   const [orden, setOrden] = useState(String(proyecto.orden))
   const [publicado, setPublicado] = useState(proyecto.publicado)
+  const [sede, setSede] = useState<SedeTaller>(proyecto.sede ?? "santa_marta")
+  const [categoria, setCategoria] = useState<CategoriaMueble | null>(proyecto.categoria ?? null)
+  const [portadaUrl, setPortadaUrl] = useState<string | null>(proyecto.portada_url ?? null)
 
   const getContexto = () => ({
     titulo,
@@ -280,6 +300,9 @@ function ProyectoForm({
           descripcion: descripcion.trim() || null,
           orden: Number(orden) || 0,
           publicado,
+          sede,
+          categoria,
+          portada_url: portadaUrl,
         })
       }}
       className="space-y-4 pt-2"
@@ -336,6 +359,56 @@ function ProyectoForm({
           <p className="text-xs text-muted-foreground">Visible para el público general.</p>
         </div>
       </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="p-sede">Sede</Label>
+          <Select value={sede} onValueChange={(v) => setSede(v as SedeTaller)}>
+            <SelectTrigger id="p-sede" className="w-full">
+              <SelectValue placeholder="Elige la sede" />
+            </SelectTrigger>
+            <SelectContent>
+              {SEDES.map((s) => (
+                <SelectItem key={s.value} value={s.value}>
+                  {ETIQUETA_SEDE[s.value]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Define en qué rama de <code className="font-mono">/portafolio</code> se publica.
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="p-categoria">Categoría de mueble</Label>
+          <Select
+            value={categoria ?? SIN_CATEGORIA}
+            onValueChange={(v) => setCategoria(v === SIN_CATEGORIA ? null : (v as CategoriaMueble))}
+          >
+            <SelectTrigger id="p-categoria" className="w-full">
+              <SelectValue placeholder="Sin categoría" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={SIN_CATEGORIA}>Sin categoría</SelectItem>
+              {CATEGORIAS_MUEBLE.map((c) => (
+                <SelectItem key={c.value} value={c.value}>
+                  {ETIQUETA_CATEGORIA[c.value]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Una sola categoría por proyecto. Sin categoría no aparece en los filtros.
+          </p>
+        </div>
+      </div>
+
+      <ProyectoFotos
+        proyectoId={proyecto.id}
+        portadaUrl={portadaUrl}
+        onPortadaChange={setPortadaUrl}
+      />
 
       <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4">
         <ProyectoPreview

@@ -37,9 +37,12 @@ const TABLAS_ESPERADAS = [
   'citas',
   'modalidades_cita',
   'proyectos',
+  'proyectos_fotos',
   'productos',
   'propuestas_3d',
   'propuestas_3d_animaciones',
+  'visores_landing',
+  'visores_landing_animaciones',
 ]
 
 const TABLAS_LEGACY_ELIMINADAS = [

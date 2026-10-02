@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServiceSupabase } from "@/lib/supabase/server"
 import { requireRol } from "@/lib/staff-auth"
 import { sanitizeError } from "@/lib/errors"
+import { CATEGORIAS_MUEBLE_SCHEMA } from "@/lib/validators"
 import { z } from "zod"
 
 const proyectoPatchSchema = z.object({
@@ -9,6 +10,9 @@ const proyectoPatchSchema = z.object({
   descripcion: z.string().max(2000).nullable().optional(),
   orden: z.number().int().optional(),
   publicado: z.boolean().optional(),
+  sede: z.enum(["santa_marta", "bogota"]).optional(),
+  categoria: z.enum(CATEGORIAS_MUEBLE_SCHEMA).nullable().optional(),
+  portada_url: z.string().url().nullable().optional(),
 })
 
 // PATCH /api/staff/administracion/portafolio/proyectos/[id] → admin edita proyecto (publicación)
