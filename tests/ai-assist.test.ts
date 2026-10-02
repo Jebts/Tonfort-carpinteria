@@ -1,9 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { NextRequest } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
 // requireStaff se resuelve a null (sesión válida) para aislar la lógica del handler.
+const h = vi.hoisted(() => ({ auth: true }))
 vi.mock("@/lib/staff-auth", () => ({
-  requireStaff: () => null,
+  requireStaff: () =>
+    h.auth
+      ? null
+      : new NextResponse(JSON.stringify({ error: "No autorizado" }), {
+          status: 401,
+          headers: { "content-type": "application/json" },
+        }),
 }))
 
 import { POST } from "@/app/api/staff/ai-suggest/route"
@@ -57,5 +64,14 @@ describe("aiSuggestSchema", () => {
 
   it("rechaza campo vacío", () => {
     expect(aiSuggestSchema.safeParse({ campo: "" }).success).toBe(false)
+  })
+})
+
+describe("POST /api/staff/ai-suggest sin sesión", () => {
+  it("401 cuando requireStaff deniega", async () => {
+    h.auth = false
+    const res = await post({ campo: "Historia", contexto: {} })
+    expect(res.status).toBe(401)
+    h.auth = true
   })
 })

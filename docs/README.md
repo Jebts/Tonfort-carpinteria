@@ -1,17 +1,21 @@
 # Tonfort Carpintería
 
-Landing y panel staff para la carpintería Tonfort. Next.js 16 (App Router) + Supabase
+Landing y panel staff para la carpintería artesanal Tonfort. Next.js 16 (App Router) + Supabase
 (single-tenant) + Caddy.
 
 ## Índice de documentación
 
-- `docs/ESTRUCTURA.md` — sistema de carpetas y dónde ubicar cada artifact
-- `docs/Constitucion_del_Proyecto.md` — principios no negociables
-- `docs/Arquitectura_del_Proyecto.md` — arquitectura de carpetas
-- `docs/Convenciones_Codigo.md` — estándares de código
-- `docs/Instrucciones_del_Proyecto.md` — reglas de construcción
-- `docs/Organigrama.md` — roles y equipo
-- `docs/RUTAS.md` — rutas y contrato de backend
+| Doc | Descripción |
+|---|---|
+| `docs/00_contexto_general.md` | Qué es el proyecto, glosario, vars de entorno |
+| `docs/01_reglas_negocio.md` | Roles, estados de cita, fases de cliente, agenda |
+| `docs/02_modelo_datos.md` | Entidades y relaciones (con inconsistencia types.ts vs migrations) |
+| `docs/03_design_system.md` | Tokens visuales (colores, tipografía, utilities) |
+| `docs/04_arquitectura.md` | Stack tech, estructura de carpetas, convenciones de código |
+| `docs/05_auditoria.md` | Inventario de archivos, código muerto, desviaciones |
+| `docs/RUTAS.md` | Contrato de rutas y backend |
+| `docs/Organigrama.md` | Flujo de despliegue |
+| `docs/planificacion-3D/` | Planificación aspiracional del módulo 3D (no implementado) |
 
 ## Cómo correr (desarrollo local)
 
@@ -51,15 +55,18 @@ LLM (server-side, sin prefijo):
 - `GROQ_API_KEY`, `GROQ_MODEL`
 - `OPENAI_API_KEY`, `OPENAI_MODEL`
 
-## Estructura
+## Estructura rápida
 
 - `app/` — rutas Next.js (App Router): landing pública + panel staff + API Route Handlers
 - `components/` — componentes UI (`tonfort/` = de dominio, `ui/` = primitivos shadcn)
-- `lib/` — lógica de negocio (Supabase, auth, citas, proyectos, LLM, contact, validators)
+- `lib/` — lógica de negocio (Supabase, auth, citas, proyectos, LLM, validators)
 - `hooks/` — hooks de React
-- `content/` — contenido estático (markdown/JSON)
-- `styles/` — estilos globales (`app/globals.css` importado por `app/layout.tsx`)
-- `docs/` — documentación de la app (ver `docs/ESTRUCTURA.md`)
+- `content/` — contenido estático (historia.ts)
+- `docs/` — documentación de la app
 - `infra/` — docker-compose, Caddyfile, scripts de deploy
 - `tests/` — tests unitarios (Vitest)
 - `public/` — assets estáticos
+
+## Para agentes de IA
+
+Lee `AGENTS.md` en la raíz antes de trabajar en este proyecto.

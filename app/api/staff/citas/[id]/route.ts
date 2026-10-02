@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServiceSupabase } from "@/lib/supabase/server"
 import { requireStaff } from "@/lib/staff-auth"
 import { citaAccionSchema, citaStaffSchema } from "@/lib/validators"
-import { validarSlotLibre } from "@/lib/citas-service"
+import { validarSlotLibre, getCitasTableName } from "@/lib/citas-service"
 import type { Cita } from "@/lib/supabase/types"
 import { sanitizeError } from "@/lib/errors"
 
@@ -28,9 +28,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
   const { accion, fecha_hora } = parse.data
 
+  const tableName = await getCitasTableName(supabase)
+
   // Cargar cita actual
   const { data: actual, error: errActual } = await supabase
-    .from("citas")
+    .from(tableName)
     .select("*")
     .eq("id", id)
     .maybeSingle()
@@ -44,7 +46,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         { status: 422 },
       )
     }
-    const { error } = await supabase.from("citas").delete().eq("id", id)
+    const { error } = await supabase.from(tableName).delete().eq("id", id)
     if (error) return NextResponse.json({ error: sanitizeError(error) }, { status: 500 })
     return NextResponse.json({ ok: true })
   }
@@ -56,7 +58,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     const { data, error } = await supabase
-      .from("citas")
+      .from(tableName)
       .update({ estado: "aceptada" })
       .eq("id", id)
       .select()
@@ -67,7 +69,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (accion === "reenviar") {
     const { data, error } = await supabase
-      .from("citas")
+      .from(tableName)
       .update({ estado: "en_espera" })
       .eq("id", id)
       .select()
@@ -78,7 +80,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (accion === "cancelar") {
     const { data, error } = await supabase
-      .from("citas")
+      .from(tableName)
       .update({ estado: "cancelada" })
       .eq("id", id)
       .select()
@@ -92,7 +94,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Indica la nueva fecha/hora" }, { status: 422 })
     }
     const { data, error } = await supabase
-      .from("citas")
+      .from(tableName)
       .update({
         fecha_hora: new Date(fecha_hora).toISOString(),
         fecha_hora_anterior: actual.fecha_hora,
@@ -132,8 +134,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const update: Record<string, unknown> = { ...parse.data }
   if (parse.data.fecha_hora) update.fecha_hora = new Date(parse.data.fecha_hora).toISOString()
 
+  const tableName = await getCitasTableName(supabase)
+
   const { data, error } = await supabase
-    .from("citas")
+    .from(tableName)
     .update(update)
     .eq("id", id)
     .select()
@@ -151,7 +155,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const supabase = getServiceSupabase()
   if (!supabase) return NextResponse.json({ error: "Backend no configurado" }, { status: 500 })
 
-  const { error } = await supabase.from("citas").delete().eq("id", id)
+  const tableName = await getCitasTableName(supabase)
+
+  const { error } = await supabase.from(tableName).delete().eq("id", id)
   if (error) return NextResponse.json({ error: sanitizeError(error) }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

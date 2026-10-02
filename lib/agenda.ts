@@ -74,7 +74,8 @@ export function slotKey(date: Date): string {
 }
 
 export function parseSlotKey(key: string): Date {
-  return parseISO(key.replace(" ", "T"))
+  // La clave se genera con toISOString() (UTC); la interpretamos como UTC.
+  return parseISO(`${key.replace(" ", "T")}Z`)
 }
 
 // ¿Está el slot en el pasado respecto a ahora? (para deshabilitar reservas)

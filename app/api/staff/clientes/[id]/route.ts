@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServiceSupabase } from "@/lib/supabase/server"
 import { requireStaff } from "@/lib/staff-auth"
 import { clienteSchema } from "@/lib/validators"
+import { getCitasTableName } from "@/lib/citas-service"
 import type { Cliente } from "@/lib/supabase/types"
 import { sanitizeError } from "@/lib/errors"
 
@@ -64,7 +65,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const supabase = getServiceSupabase()
   if (!supabase) return NextResponse.json({ error: "Backend no configurado" }, { status: 500 })
 
-  const { error: errorCitas } = await supabase.from("citas").delete().eq("cliente_id", id)
+  const tableName = await getCitasTableName(supabase)
+  const { error: errorCitas } = await supabase.from(tableName).delete().eq("cliente_id", id)
   if (errorCitas) return NextResponse.json({ error: sanitizeError(errorCitas) }, { status: 500 })
 
   const { error } = await supabase.from("clientes").delete().eq("id", id)

@@ -12,9 +12,17 @@ import { getServiceSupabase } from "@/lib/supabase/server"
 // eslint-disable-next-line import/first
 import {
   calcularDisponibilidad,
-  upsertClientePorEmail,
+  upsertClientePorTelefono,
+  normalizarTelefono,
   crearCitaWeb,
+  validarSlotLibre,
+  resetCachedTableName,
 } from "@/lib/citas-service"
+
+beforeEach(() => {
+  vi.mocked(getServiceSupabase).mockReset()
+  resetCachedTableName()
+})
 
 // Chainable, thenable mock: cada `await` consome el siguiente resultado de la
 // cola compartida por tabla (mismo cursor para todos los `.from(table)`).
@@ -46,7 +54,12 @@ function makeSupabase(initial?: {
     return proxy
   }
   // Una sola cadena por tabla → cursor compartido entre select e insert.
-  const chains = { clientes: mk(state.clientes), citas: mk(state.citas) }
+  // Prependemos un check de existencia de tabla (consumido por getCitasTableName).
+  const citasChainItems = [{ data: null, error: null }, ...(initial?.citas ?? [])]
+  const chains = {
+    clientes: mk({ items: initial?.clientes ?? [], cursor: 0 }),
+    citas: mk({ items: citasChainItems, cursor: 0 }),
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase: any = {
     from: (table: string) => chains[table as "clientes" | "citas"] ?? mk({ items: [], cursor: 0 }),
@@ -97,40 +110,121 @@ describe("calcularDisponibilidad", () => {
     expect(porHora[8]).toBe("aceptada")
     expect(porHora[10]).toBe("vacio")
   })
+
+  it("un bloque con cita virtual sigue libre para quien pide presencial", async () => {
+    const lunes = lunesReferencia()
+    const desde = new Date(lunes)
+    desde.setUTCHours(7, 0, 0, 0)
+    const hasta = new Date(lunes)
+    hasta.setUTCHours(10, 0, 0, 0)
+
+    const citaISO = new Date(lunes)
+    citaISO.setUTCHours(8, 0, 0, 0)
+
+    const supabase = makeSupabase({
+      citas: [
+        {
+          data: [
+            {
+              id: "1",
+              fecha_hora: citaISO.toISOString(),
+              estado: "aceptada",
+              movida: false,
+              nombre_solicitante: "X",
+              cliente_id: null,
+              modalidad_id: "mod-virtual",
+            },
+          ],
+          error: null,
+        },
+      ],
+    })
+    vi.mocked(getServiceSupabase).mockReturnValue(supabase)
+
+    const slots = await calcularDisponibilidad(desde, hasta, { modalidadId: "mod-presencial" })
+    const slotOcho = slots.find((s) => new Date(s.fecha_hora).getUTCHours() === 8)
+
+    expect(slotOcho?.estado).toBe("vacio")
+  })
+
+  it("la cita de otra modalidad no delata el nombre del solicitante", async () => {
+    const lunes = lunesReferencia()
+    const desde = new Date(lunes)
+    desde.setUTCHours(7, 0, 0, 0)
+    const hasta = new Date(lunes)
+    hasta.setUTCHours(10, 0, 0, 0)
+
+    const citaISO = new Date(lunes)
+   citaISO.setUTCHours(8, 0, 0, 0)
+
+    const supabase = makeSupabase({
+      citas: [
+        {
+          data: [
+            {
+              id: "1",
+              fecha_hora: citaISO.toISOString(),
+              estado: "aceptada",
+              movida: false,
+              nombre_solicitante: "Nombre Confidencial",
+              cliente_id: null,
+              modalidad_id: "mod-virtual",
+            },
+          ],
+          error: null,
+        },
+      ],
+    })
+    vi.mocked(getServiceSupabase).mockReturnValue(supabase)
+
+    const slots = await calcularDisponibilidad(desde, hasta, { modalidadId: "mod-presencial" })
+    const slotOcho = slots.find((s) => new Date(s.fecha_hora).getUTCHours() === 8)
+
+    expect(slotOcho?.citas).toHaveLength(1)
+    expect(slotOcho?.citas[0].nombre).toBeNull()
+  })
 })
 
-describe("upsertClientePorEmail", () => {
-  it("crea cliente cuando no existe por email", async () => {
+describe("normalizarTelefono", () => {
+  it("deja solo dígitos", () => {
+    expect(normalizarTelefono("+57 (300) 123-4567")).toBe("3001234567")
+  })
+
+  it("colapsa el prefijo 57 para que sea la misma clave", () => {
+    expect(normalizarTelefono("+57 300 123 4567")).toBe(
+      normalizarTelefono("3001234567"),
+    )
+  })
+})
+
+describe("upsertClientePorTelefono", () => {
+  it("crea cliente cuando no existe con ese teléfono", async () => {
     const supabase = makeSupabase({
       clientes: [
-        { data: null, error: null }, // select maybeSingle
+        { data: [], error: null }, // select por telefono
         { data: { id: "cid" }, error: null }, // insert single
       ],
     })
-    const id = await upsertClientePorEmail(supabase, {
+    const id = await upsertClientePorTelefono(supabase, {
       nombre: "Ana",
-      email: "ana@x.com",
+      telefono: "3001234567",
     })
     expect(id).toBe("cid")
   })
 
-  it("devuelve el id existente cuando ya hay cliente con ese email", async () => {
+  it("devuelve el id existente cuando ya hay cliente con ese teléfono", async () => {
     const supabase = makeSupabase({
-      clientes: [{ data: { id: "existente" }, error: null }],
+      clientes: [{ data: [{ id: "existente", nombre: "Ana", descripcion_proyecto: null }], error: null }],
     })
-    const id = await upsertClientePorEmail(supabase, {
+    const id = await upsertClientePorTelefono(supabase, {
       nombre: "Ana",
-      email: "ana@x.com",
+      telefono: "+57 300 123 4567",
     })
     expect(id).toBe("existente")
   })
 })
 
 describe("crearCitaWeb", () => {
-  beforeEach(() => {
-    vi.mocked(getServiceSupabase).mockReset()
-  })
-
   it("retorna {ok:true, cita} con la cita insertada", async () => {
     const supabase = makeSupabase({
       clientes: [
@@ -146,10 +240,11 @@ describe("crearCitaWeb", () => {
 
     const res = await crearCitaWeb({
       nombre: "Juan",
-      email: "juan@x.com",
-      telefono: "123",
+      telefono: "3001234567",
       descripcion: "mesa",
       fecha_hora: "2026-08-20T10:00:00.000Z",
+      modalidad_id: "mod-virtual",
+      precio_copiado: 0,
     })
 
     expect(res.ok).toBe(true)
@@ -161,14 +256,69 @@ describe("crearCitaWeb", () => {
 
     const res = await crearCitaWeb({
       nombre: "Juan",
-      email: "juan@x.com",
-      telefono: "123",
+      telefono: "3001234567",
       descripcion: "mesa",
       fecha_hora: "2026-08-20T10:00:00.000Z",
+      modalidad_id: "mod-virtual",
+      precio_copiado: 0,
     })
 
     expect(res.ok).toBe(false)
     expect(typeof res.error).toBe("string")
     expect(res.error!.length).toBeGreaterThan(0)
+  })
+})
+
+describe("validarSlotLibre", () => {
+  it("libre cuando no hay citas aceptadas en la ventana", async () => {
+    const supabase = makeSupabase({
+      citas: [{ data: [], error: null }],
+    })
+    const res = await validarSlotLibre(supabase, "2026-08-20T10:00:00.000Z")
+    expect(res.ok).toBe(true)
+  })
+
+  it("ocupado cuando hay una cita aceptada en la ventana", async () => {
+    const supabase = makeSupabase({
+      citas: [{ data: [{ id: "ocupante" }], error: null }],
+    })
+    const res = await validarSlotLibre(supabase, "2026-08-20T10:00:00.000Z")
+    expect(res.ok).toBe(false)
+    expect(res.error).toContain("aceptada")
+  })
+
+  it("propaga el error de la BD", async () => {
+    const supabase = makeSupabase({
+      citas: [{ data: null, error: new Error("boom") }],
+    })
+    const res = await validarSlotLibre(supabase, "2026-08-20T10:00:00.000Z")
+    expect(res.ok).toBe(false)
+  })
+})
+
+describe("crearCitaWeb con cliente existente e ip", () => {
+  it("reusa el id del cliente existente y propaga la ip", async () => {
+    const supabase = makeSupabase({
+      clientes: [{ data: { id: "existente" }, error: null }],
+      citas: [
+        { data: [], error: null },
+        { data: { id: "cita1", cliente_id: "existente" }, error: null },
+      ],
+    })
+    vi.mocked(getServiceSupabase).mockReturnValue(supabase)
+
+    const res = await crearCitaWeb({
+      nombre: "Juan",
+      telefono: "3001234567",
+      descripcion: "mesa",
+      fecha_hora: "2026-08-20T10:00:00.000Z",
+      modalidad_id: "mod-virtual",
+      precio_copiado: 0,
+      ip: "1.2.3.4",
+    })
+
+    expect(res.ok).toBe(true)
+    expect(res.cita?.id).toBe("cita1")
+    expect((res.cita as { cliente_id?: string }).cliente_id).toBe("existente")
   })
 })

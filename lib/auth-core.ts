@@ -7,11 +7,28 @@ const p = 1
 const r = 8
 
 export const COOKIE_NAME = "tonfort_staff"
-export const MAX_AGE_SECONDS = 60 * 60 * 24 * 7 // 7 días
+export const MAX_AGE_SECONDS = 60 * 60 * 24 * 7
+
+export type RolStaff = "admin" | "asesor" | "disenador"
 
 export interface Sesion {
+  id: string
   usuario: string
   nombre: string
+  rol: RolStaff
+}
+
+export interface UsuarioDB {
+  id: string
+  email: string
+  password_hash: string
+  nombre: string
+  rol: RolStaff
+  foto_perfil: string | null
+  bio_publica: string | null
+  activo: boolean
+  creado_en: string
+  actualizado_en: string
 }
 
 function secret(): string {
@@ -43,8 +60,6 @@ export async function hashPasswordForEnv(password: string): Promise<string> {
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
-  // Separador ":" (no "$") para no chocar con la interpolación de variables de
-  // @next/env / docker-compose, que truncan cualquier valor con "$".
   const [saltB64, hashB64] = stored.split(":")
   if (!saltB64 || !hashB64) return false
   const salt = Buffer.from(saltB64, "base64url")
@@ -80,36 +95,12 @@ export function verificarToken(token?: string | null): { ok: boolean; sesion?: S
   try {
     const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"))
     if (!data.exp || data.exp < Date.now()) return { ok: false }
-    if (!data.usuario || !data.nombre) return { ok: false }
-    return { ok: true, sesion: { usuario: data.usuario, nombre: data.nombre } }
+    if (data.id == null || !data.usuario || !data.nombre || !data.rol) return { ok: false }
+    return { ok: true, sesion: { id: data.id, usuario: data.usuario, nombre: data.nombre, rol: data.rol as RolStaff } }
   } catch {
     return { ok: false }
   }
 }
 
-export interface StaffCredential {
-  usuario: string
-  password_hash?: string
-  password?: string
-  nombre: string
-}
-
-export async function validarCredenciales(usuario: string, password: string): Promise<Sesion | null> {
-  const raw = process.env.STAFF_CREDENTIALS
-  if (!raw) return null
-  try {
-    const lista = JSON.parse(raw) as StaffCredential[]
-    const encontrado = lista.find((c) => c.usuario === usuario)
-    if (!encontrado) return null
-    let ok = false
-    if (encontrado.password_hash) {
-      ok = await verifyPassword(password, encontrado.password_hash)
-    } else if (typeof encontrado.password === "string") {
-      ok = password === encontrado.password
-    }
-    if (!ok) return null
-    return { usuario: encontrado.usuario, nombre: encontrado.nombre }
-  } catch {
-    return null
-  }
-}
+// Auth DB: valida contra usuarios en la base de datos (sin fallback STAFF_CREDENTIALS - eliminado del flujo activo)
+export { validarCredencialesDB } from "@/lib/auth-db"

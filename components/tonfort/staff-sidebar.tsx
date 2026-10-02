@@ -6,18 +6,64 @@ import { motion } from "motion/react"
 import {
   CalendarDays,
   CalendarCheck,
+  ChevronDown,
   FolderKanban,
   LogOut,
+  LayoutDashboard,
   Users,
+  UserCog,
+  ReceiptText,
+  Box,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "./theme-toggle"
+import type { RolStaff } from "@/lib/auth-core"
+import { useState } from "react"
+import type { ReactNode } from "react"
 
-const items = [
-  { href: "/staff/clientes", label: "Clientes", icon: Users },
-  { href: "/staff/agenda", label: "Agenda", icon: CalendarDays },
-  { href: "/staff/citas", label: "Citas", icon: CalendarCheck },
-  { href: "/staff/portafolio", label: "Portafolio", icon: FolderKanban },
+type Icon = (props: { className?: string }) => ReactNode
+
+interface SidebarItem {
+  href: string
+  label: string
+  icon: Icon
+}
+
+interface SidebarSection {
+  label: string
+  roles: RolStaff[]
+  items: SidebarItem[]
+}
+
+const sections: SidebarSection[] = [
+  {
+    label: "Administración",
+    roles: ["admin"],
+    items: [
+      { href: "/staff/administracion", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/staff/administracion/cotizaciones", label: "Cotizaciones", icon: ReceiptText },
+      { href: "/staff/administracion/usuarios", label: "Usuarios", icon: UserCog },
+      { href: "/staff/administracion/portafolio", label: "Portafolio", icon: FolderKanban },
+    ],
+  },
+  {
+    label: "Gestión",
+    roles: ["admin", "asesor"],
+    items: [
+      { href: "/staff/gestion", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/staff/gestion/clientes", label: "Clientes", icon: Users },
+      { href: "/staff/gestion/agenda", label: "Agenda", icon: CalendarDays },
+      { href: "/staff/gestion/citas", label: "Citas", icon: CalendarCheck },
+    ],
+  },
+  {
+    label: "Diseño",
+    roles: ["admin", "disenador"],
+    items: [
+      { href: "/staff/diseno/proyectos", label: "Proyectos", icon: FolderKanban },
+      { href: "/staff/diseno/visores", label: "Visores landing", icon: Box },
+    ],
+  },
 ]
 
 const itemVariants = {
@@ -28,46 +74,89 @@ const itemVariants = {
 export function StaffSidebar({
   className,
   onItemClick,
+  rol,
+  collapsedMobile = false,
 }: {
   className?: string
   onItemClick?: () => void
+  rol?: RolStaff
+  collapsedMobile?: boolean
 }) {
   const pathname = usePathname()
+  const visibleSections = rol
+    ? sections.filter((s) => s.roles.includes(rol))
+    : sections
+
+  const [openSection, setOpenSection] = useState<string | null>(null)
 
   const logout = async () => {
     await fetch("/api/staff/logout", { method: "POST" })
     location.href = "/staff/login"
   }
 
+  const itemClase = (active: boolean) =>
+    cn(
+      "press flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
+      active
+        ? "bg-primary text-primary-foreground"
+        : "text-foreground hover:bg-muted",
+    )
+
   return (
     <nav className={cn("flex flex-col gap-1", className)} aria-label="Navegación staff">
       <motion.div variants={itemVariants}>
         <Link
           href="/staff"
-          className="px-3 py-2 font-mono text-xs uppercase tracking-widest text-muted-foreground"
+          className="px-3 py-2 font-sans text-xs font-medium uppercase tracking-widest text-muted-foreground"
         >
           tonfort
         </Link>
       </motion.div>
       <div className="flex-1">
-        {items.map((item) => {
-          const active = pathname.startsWith(item.href)
-          const Icon = item.icon
+        {visibleSections.map((section) => {
+          const isActiveSection = section.items.some((item) =>
+            pathname === item.href || pathname.startsWith(item.href + "/"),
+          )
+          const isFirst = visibleSections.indexOf(section) === 0
           return (
-            <motion.div key={item.href} variants={itemVariants}>
-              <Link
-                href={item.href}
-                onClick={onItemClick}
+            <motion.div key={section.label} variants={itemVariants}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (openSection === section.label) setOpenSection(null)
+                  else setOpenSection(section.label)
+                }}
                 className={cn(
-                  "press flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
-                  active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-foreground hover:bg-muted",
+                  "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-medium uppercase tracking-widest text-muted-foreground hover:bg-muted",
+                  isActiveSection && "bg-muted font-semibold text-foreground",
                 )}
               >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Link>
+                <span>{section.label}</span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 transition-transform",
+                    openSection === section.label ? "rotate-180" : "",
+                  )}
+                />
+              </button>
+              {(openSection === section.label || (isFirst && openSection === null)) &&
+                section.items.map((item) => {
+                  const active =
+                    pathname === item.href || pathname.startsWith(item.href + "/")
+                  const Icon = item.icon
+                  return (
+                    <motion.div key={item.href} variants={itemVariants} className="ml-4">
+                      <Link
+                        href={item.href}
+                        onClick={onItemClick}
+                        className={itemClase(active)}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {item.label}
+                      </Link>
+                    </motion.div>
+                  )
+                })}
             </motion.div>
           )
         })}

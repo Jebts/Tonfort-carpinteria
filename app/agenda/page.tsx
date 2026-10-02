@@ -1,17 +1,6 @@
-import { Navigation } from "@/components/tonfort/navigation"
-import { Footer } from "@/components/tonfort/footer"
-import { AgendaPublica } from "@/components/tonfort/agenda-publica"
-import { Toaster } from "@/components/ui/sonner"
+import { redirect } from "next/navigation"
 
-export const dynamic = "force-dynamic"
-
-export default function AgendaPage() {
-  return (
-    <main className="relative min-h-screen overflow-x-hidden bg-background">
-      <Navigation />
-      <AgendaPublica />
-      <Footer />
-      <Toaster />
-    </main>
-  )
+// El flujo público es lineal de 2 pasos: modalidad → horario.
+export default function AgendaRedirect() {
+  redirect("/agenda/modalidad")
 }

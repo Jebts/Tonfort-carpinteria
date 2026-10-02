@@ -1,31 +1,24 @@
 # Organigrama del proyecto TonFort (carpintería)
 
 Mapa de flujo de datos y reglas de comunicación de **este repo** (`tonfort`,
-carpintería). Tras la separación en repos independientes, este repo contiene
-**solo** la app de carpintería; el SaaS + n8n viven en el repo hermano
-`tonfort-atencion`.
+carpintería). Este repo contiene **solo** la app de carpintería (landing + panel staff).
 
 ## Diagrama de flujo (producción)
 
 ```
-                       Cloudflare DNS (grey-cloud, A record)
-                       carpinteria . tonfort.com  →  IP pública del VPS
-                                     │
-                                     ▼
-                          ┌──────────────────────────┐
-                          │  Caddy  (TLS Let's Encrypt)│   puertos 80 + 443
-                          │  infra/Caddyfile           │   HTTP→HTTPS automático
-                          └──────────────────────────┘
-                               │ reverse_proxy
-                               ▼
-                        carpinteria-web:3001
-                        (app Next.js en la RAÍZ del repo)
-                        100% estática / server-rendered
+                        Cloudflare DNS (grey-cloud, A record)
+                        carpinteria.{DOMAIN} → IP pública del VPS
+                                      │
+                                      ▼
+                           ┌──────────────────────────┐
+                           │  Caddy  (TLS Let's Encrypt)│   puertos 80 + 443
+                           │  infra/Caddyfile           │   HTTP→HTTPS automático
+                           └──────────────────────────┘
+                                │ reverse_proxy
+                                ▼
+                    carpinteria-web (app Next.js en la RAÍZ del repo)
+                    100% estática / server-rendered
 ```
-
-> El SaaS y n8n se despliegan en un VPS distinto desde el repo `tonfort-atencion`
-> (`saas.{DOMAIN}` + `n8n.{DOMAIN}`). Cada repo se despliega y rueda de forma
-> independiente; no hay compose concatenado entre ambos.
 
 ## Reglas de comunicación (fuente de autoridad)
 
@@ -36,3 +29,10 @@ carpintería). Tras la separación en repos independientes, este repo contiene
 3. **`infra/scripts/*`** lee su única fuente de verdad de vars/secretos del `.env`
    raíz.
 4. **DNS por subdominio (grey-cloud) + Caddy** enruta `carpinteria.{DOMAIN}`.
+
+## Separación de repos
+
+Antes de la refactorización, este repo era un SaaS multi-tenant de automatización de
+WhatsApp (n8n, Wompi, Google Calendar). Fue refactorizado a una app de carpintería
+single-tenant. El SaaS + n8n viven en un repo hermano (`tonfort-atencion`), desplegado
+de forma independiente. Este repo no contiene código SaaS.

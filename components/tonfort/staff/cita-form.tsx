@@ -104,7 +104,7 @@ export function CitaForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="rounded-xl border p-4 space-y-3">
-        <h3 className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Información del cliente</h3>
+        <h3 className="text-xs font-sans font-medium uppercase tracking-widest text-muted-foreground">Información del cliente</h3>
 
         <div className="space-y-1.5">
           <Label>Fuente del cliente</Label>
@@ -158,7 +158,7 @@ export function CitaForm({
       </div>
 
       <div className="rounded-xl border p-4 space-y-3">
-        <h3 className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Información de la cita</h3>
+        <h3 className="text-xs font-sans font-medium uppercase tracking-widest text-muted-foreground">Información de la cita</h3>
 
         <div className="space-y-1.5">
           <Label htmlFor="fecha">Fecha y hora</Label>

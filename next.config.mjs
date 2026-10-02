@@ -9,6 +9,9 @@ const nextConfig = {
   devIndicators: {
     hostname: false,
   },
+  // Permite que el cliente HMR (127.0.0.1 / localhost) se conecte al
+  // websocket de Turbopack sin ser bloqueado por la política de orígenes.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   typescript: {
     ignoreBuildErrors: false,
   },

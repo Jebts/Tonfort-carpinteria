@@ -1,31 +1,35 @@
 import React from "react"
 import type { Metadata } from 'next'
-import { Roboto, Roboto_Condensed, Roboto_Mono } from 'next/font/google'
+import { Arvo, Montserrat } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
+import { SmoothScrollProvider } from '@/components/tonfort/smooth-scroll-provider'
 import './globals.css'
 
-const roboto = Roboto({
+const arvo = Arvo({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
-  variable: '--font-roboto'
+  weight: ["400", "700"],
+  variable: '--font-arvo'
 });
 
-const robotoCondensed = Roboto_Condensed({
+const montserrat = Montserrat({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
-  variable: '--font-roboto-condensed'
-});
-
-const robotoMono = Roboto_Mono({
-  subsets: ["latin"],
-  variable: '--font-roboto-mono'
+  weight: ["300", "400", "500", "600", "700"],
+  variable: '--font-montserrat'
 });
 
 export const metadata: Metadata = {
   title: 'Tonfort — Diseño de espacios y mobiliario a medida',
   description: 'No diseñamos muebles, diseñamos espacios. Cocinas, closets, muebles de TV y puertas a medida con soluciones de iluminación integradas. Vendemos la experiencia de habitar un espacio.',
-  generator: 'v0.app',
+  icons: {
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/apple-icon.png',
+    other: [
+      { rel: 'icon', type: 'image/png', sizes: '32x32', url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
+      { rel: 'icon', type: 'image/png', sizes: '32x32', url: '/icon-dark-32x32.png', media: '(prefers-color-scheme: dark)' },
+    ],
+  },
 }
 
 export default function RootLayout({
@@ -35,9 +39,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="bg-background" data-scroll-behavior="smooth" suppressHydrationWarning>
-      <body className={`${roboto.variable} ${robotoCondensed.variable} ${robotoMono.variable} font-sans antialiased`}>
+      <body className={`${arvo.variable} ${montserrat.variable} font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
+          <SmoothScrollProvider>
+            {children}
+          </SmoothScrollProvider>
           <Analytics />
         </ThemeProvider>
       </body>

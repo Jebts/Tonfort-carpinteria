@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServiceSupabase } from "@/lib/supabase/server"
 import { requireStaff } from "@/lib/staff-auth"
-import { calcularDisponibilidad, validarSlotLibre } from "@/lib/citas-service"
+import { calcularDisponibilidad, validarSlotLibre, getCitasTableName } from "@/lib/citas-service"
 import { citaStaffSchema } from "@/lib/validators"
 import { addDays } from "date-fns"
 import type { Cita } from "@/lib/supabase/types"
@@ -31,8 +31,10 @@ export async function GET(req: NextRequest) {
     cliente,
   })
 
+  const tableName = await getCitasTableName(supabase)
+
   let citasQuery = supabase
-    .from("citas")
+    .from(tableName)
     .select("*")
     .gte("fecha_hora", desde.toISOString())
     .lte("fecha_hora", hasta.toISOString())
@@ -75,8 +77,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: validacion.error }, { status: 422 })
   }
 
+  const tableName = await getCitasTableName(supabase)
+
   const { data, error } = await supabase
-    .from("citas")
+    .from(tableName)
     .insert({
       cliente_id: d.cliente_id ?? null,
       nombre_solicitante: d.nombre_solicitante ?? null,

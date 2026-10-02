@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js"
+import { createClient as createClientSupabase, type SupabaseClient } from "@supabase/supabase-js"
 
 // Cliente server con service_role. Usado por los Route Handlers para lectura/
 // escritura sin restricciones de RLS. NUNCA exponer al browser.
@@ -19,12 +19,20 @@ function anonKey() {
   return process.env.CARPINTERIA_SUPABASE_ANON_KEY
 }
 
+export function createClient(): SupabaseClient | null {
+  if (!url() || !serviceKey()) return null
+  if (!cachedService) {
+    cachedService = createClientSupabase(url()!, serviceKey()!, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+  }
+  return cachedService
+}
+
 export function getServiceSupabase(): SupabaseClient | null {
   if (!url() || !serviceKey()) return null
   if (!cachedService) {
-    cachedService = createClient(url()!, serviceKey()!, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    })
+    cachedService = createClientSupabase(url()!, serviceKey()!)
   }
   return cachedService
 }
@@ -33,9 +41,7 @@ export function getServiceSupabase(): SupabaseClient | null {
 export function getAnonSupabase(): SupabaseClient | null {
   if (!url() || !anonKey()) return null
   if (!cachedAnon) {
-    cachedAnon = createClient(url()!, anonKey()!, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    })
+    cachedAnon = createClientSupabase(url()!, anonKey()!)
   }
   return cachedAnon
 }

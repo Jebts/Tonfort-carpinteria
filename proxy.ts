@@ -1,18 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { COOKIE_NAME, verificarToken } from "@/lib/auth-core"
 
-// Protege /staff/* (salvo /staff/login y /api/staff/login).
-// proxy.ts corre en el runtime de Node.js (Next 16), así que verificarToken
-// (HMAC con crypto de Node) funciona sin problemas de Edge.
-// Si no hay cookie firmada válida:
-//   - páginas → redirige a /staff/login
-//   - API → 401 JSON
-
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   const esLogin =
-    pathname === "/staff/login" || pathname === "/api/staff/login"
+    pathname === "/staff/login" ||
+    pathname === "/api/staff/login" ||
+    pathname.startsWith("/api/staff/login/")
+
   if (esLogin) return NextResponse.next()
 
   const token = req.cookies.get(COOKIE_NAME)?.value

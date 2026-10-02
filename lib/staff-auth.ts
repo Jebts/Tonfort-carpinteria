@@ -4,23 +4,19 @@ import {
   COOKIE_NAME,
   firmarSesion,
   verificarToken,
-  validarCredenciales,
-  hashPasswordForEnv,
   type Sesion,
+  type RolStaff,
 } from "@/lib/auth-core"
 
-// Helpers Next.js para la cookie de staff (usa next/headers y next/server).
-// La lógica de firma vive en lib/auth-core para que el middleware pueda reusarla
-// sin importar next/headers.
+export type { Sesion, UsuarioDB } from "@/lib/auth-core"
 
 export {
   COOKIE_NAME,
   firmarSesion,
   verificarToken,
-  validarCredenciales,
   hashPasswordForEnv,
-  type Sesion,
 } from "@/lib/auth-core"
+export { validarCredencialesDB } from "@/lib/auth-db"
 
 // Lee y verifica la cookie firmada desde un NextRequest.
 export function verificarSesion(req: NextRequest): { ok: boolean; sesion?: Sesion } {
@@ -28,8 +24,7 @@ export function verificarSesion(req: NextRequest): { ok: boolean; sesion?: Sesio
   return verificarToken(token)
 }
 
-// Para usar en Route Handlers: si no hay sesión válida, devuelve una respuesta
-// 401. Si es válida, devuelve null y puedes continuar.
+// Para usar en Route Handlers: si no hay sesión válida, devuelve una respuesta 401.
 export function requireStaff(req: NextRequest): NextResponse | null {
   const { ok } = verificarSesion(req)
   if (!ok) {
@@ -41,12 +36,36 @@ export function requireStaff(req: NextRequest): NextResponse | null {
   return null
 }
 
+// Para usar en Route Handlers: requiere sesión válida con un rol permitido.
+export function requireRol(req: NextRequest, roles: RolStaff[]): NextResponse | null {
+  const { ok, sesion } = verificarSesion(req)
+  if (!ok || !sesion) {
+    return new NextResponse(JSON.stringify({ error: "No autorizado" }), {
+      status: 401,
+      headers: { "content-type": "application/json" },
+    })
+  }
+  if (!roles.includes(sesion.rol)) {
+    return new NextResponse(JSON.stringify({ error: "Prohibido" }), {
+      status: 403,
+      headers: { "content-type": "application/json" },
+    })
+  }
+  return null
+}
+
+// Lee la sesión (con rol) desde un NextRequest, para lógica de autorización fina.
+export function getSesion(req: NextRequest): Sesion | null {
+  const { sesion } = verificarSesion(req)
+  return sesion ?? null
+}
+
 // Escribe la cookie firmada en una NextResponse.
 export function setSessionCookie(res: NextResponse, sesion: Sesion) {
   res.cookies.set(COOKIE_NAME, firmarSesion(sesion), {
     httpOnly: true,
     sameSite: "lax",
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   })
@@ -56,7 +75,7 @@ export function clearSessionCookie(res: NextResponse) {
   res.cookies.set(COOKIE_NAME, "", {
     httpOnly: true,
     sameSite: "lax",
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 0,
   })

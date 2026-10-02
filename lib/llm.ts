@@ -1,6 +1,7 @@
 // lib/llm.ts
 // Resolvedor de LLM configurable (mock | groq | openai) para la carpintería.
-// Adaptado al contexto de portafolio
+// Adaptado al contexto de proyectos
+// (proyectos de carpintería). El cliente web llama al LLM en el Route Handler
 // (proyectos de carpintería). El cliente web llama al LLM en el Route Handler
 // (/api/staff/ai-suggest, server-only) para que las API keys nunca lleguen al
 // browser. Las variables se leen SIN prefijo (LLM_PROVIDER, GROQ_*, OPENAI_*),
@@ -47,7 +48,7 @@ export interface SugerirTextoArgs {
 // Texto determinista para modo mock (sin API key externa). Se usa en tests y
 // entornos sin costo: deja claro que es una sugerencia de IA mock basada en el
 // campo y el contexto recibidos.
-function mockSugerir({ campo, contexto, promptExtra }: SugerirTextoArgs): string {
+export function mockSugerir({ campo, contexto, promptExtra }: SugerirTextoArgs): string {
   const ctxLineas = Object.entries(contexto)
     .filter(([, v]) => v && v.trim())
     .map(([k, v]) => `- ${k}: ${v.trim()}`)
@@ -55,13 +56,13 @@ function mockSugerir({ campo, contexto, promptExtra }: SugerirTextoArgs): string
     ? `\nContexto del proyecto:\n${ctxLineas.join('\n')}`
     : ''
   const extra = promptExtra && promptExtra.trim() ? `\nInstrucción del staff: ${promptExtra.trim()}` : ''
-  return `【IA mock】Sugerencia para "${campo}": escribe aquí un texto de portafolio${ctx}${extra}.`
+  return `【IA mock】Sugerencia para "${campo}": escribe aquí un texto de proyecto${ctx}${extra}.`
 }
 
 // Arma el system prompt con el tono de un portafolio de carpintería artesanal.
 function systemPrompt(): string {
   return [
-    'Eres un redactor de portafolio para un taller de carpintería artesanal (muebles a medida: cocinas, closets, muebles de TV, puertas).',
+    'Eres un redactor de proyectos para un taller de carpintería artesanal (muebles a medida: cocinas, closets, muebles de TV, puertas).',
     'Escribes en español, con tono cálido y profesional, destacando la artesanía, los materiales y el detalle de iluminación que caracterizan al taller.',
     'Entregas solo el texto solicitado para el campo indicado, sin preámbulos ni explicaciones.',
   ].join(' ')

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cotizador de Cortes — Taller</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header>
+  <h1>Cotizador de Cortes</h1>
+  <p>Importa los CSV de OpenCutList, agrega materiales, ajusta precios y márgenes, genera esquemas de corte y exporta la cotización.</p>
+</header>
+
+<main>
+
+  <section class="panel">
+    <h2>1. Importar archivos</h2>
+    <p class="hint">Arrastra aquí todos los CSV del proyecto (cada modelo individual + el combinado). Los archivos con "TODOS" o "MODELO_00" en el nombre se marcan automáticamente como <em>Combinado</em> — puedes cambiar la etiqueta con un clic.</p>
+    <div id="dropzone">
+      <strong>Arrastra tus archivos CSV aquí</strong>
+      <span>o haz clic para seleccionarlos</span>
+      <input type="file" id="fileInput" accept=".csv" multiple>
+    </div>
+    <div id="fileList"></div>
+  </section>
+
+  <div id="resultados" style="display:none;">
+
+    <section class="panel">
+      <h2>2. Gasto de material</h2>
+      <p class="hint">Parcial = suma de los modelos individuales (sin compartir sobrantes). Acumulado = calculado sobre el archivo combinado (material optimizado).</p>
+      <div class="cards" id="cards"></div>
+    </section>
+
+    <section class="panel">
+      <h2>3. Materiales, precios y esquema de corte</h2>
+      <p class="hint">La columna "Cantidad a comprar" se llena sola desde el CSV (acumulado si hay combinado, si no la suma de individuales) pero puedes editarla a mano. Los tableros tienen un ícono 🪚 para generar su esquema de corte y usar el número de láminas resultante como cantidad.</p>
+      <div class="toolbar">
+        <button class="action secondary" id="btnMostrarAgregar">+ Agregar material manual</button>
+        <div class="margen-field">
+          <label>Margen de ganancia</label>
+          <input type="number" id="inMargen" value="0" min="0" step="1"> <span>%</span>
+        </div>
+      </div>
+      <div class="add-form" id="addForm">
+        <div class="field"><label>Nombre del material</label><input id="addNombre" placeholder="Ej. Melamina Blanca 18mm"></div>
+        <div class="field"><label>Tipo</label>
+          <select id="addTipo">
+            <option value="Tablero">Tablero (m²)</option>
+            <option value="Canto">Canto (ml)</option>
+            <option value="Liston">Listón (ml)</option>
+            <option value="Accesorio">Accesorio (unid)</option>
+          </select>
+        </div>
+        <div class="field"><label>Cantidad</label><input id="addCantidad" type="number" value="0" step="0.01"></div>
+        <div class="field"><label>Precio unitario</label><input id="addPrecio" type="number" value="0" step="100"></div>
+        <button class="action" id="btnAgregarMaterial">Agregar</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Material</th><th>Tipo</th><th>Unidad</th>
+            <th class="num">Cantidad a comprar</th>
+            <th class="num">Precio unitario</th>
+            <th>Nota</th>
+            <th class="num">Subtotal</th>
+            <th class="num">Subtotal c/margen</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tablaMateriales"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="6">TOTAL</td>
+            <td class="num" id="totalSinMargen">$0</td>
+            <td class="num" id="totalConMargen">$0</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+      <div class="warn-box" id="warnBox" style="display:none;"></div>
+      <div class="btns" style="margin-top:14px;">
+        <button class="action secondary" id="btnDescargarEsquemas">Descargar esquemas de corte generados (HTML)</button>
+        <button class="action secondary" id="btnDescargarPrecios">Descargar lista de precios (Excel)</button>
+        <button class="action secondary" id="btnGuardarPrecios">Guardar mis precios (.json, para reusar)</button>
+        <label class="action secondary" style="display:inline-flex; align-items:center; cursor:pointer;">
+          Cargar precios guardados
+          <input type="file" id="inputPrecios" accept=".json" style="display:none;">
+        </label>
+        <button class="action secondary" id="btnAplicarPrecios">Aplicar lista cargada</button>
+        <button class="action secondary" id="btnLimpiarPrecios">Limpiar precios cargados</button>
+        <span id="preciosCargadosInfo" style="font-size:12px; color:var(--ink-soft); align-self:center;"></span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>4. Lista de compra</h2>
+      <p class="hint">Resumen final de cuánto material comprar (usa la cantidad a comprar de la tabla anterior, incluyendo tus ajustes manuales y tableros calculados por el esquema de corte).</p>
+      <table class="compra-table">
+        <thead><tr><th>Material</th><th>Tipo</th><th class="num">A comprar</th><th>Unidad</th><th>Nota</th></tr></thead>
+        <tbody id="tablaCompra"></tbody>
+      </table>
+      <div class="btns" style="margin-top:14px;">
+        <button class="action secondary" id="btnDescargarListaCompra">Descargar lista de compra (Excel)</button>
+        <button class="action secondary" id="btnDescargarReporteCompra">Descargar reporte completo de compra (Excel)</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>5. Rango a presentar al cliente</h2>
+      <div class="rango-box">
+        <div class="txt">
+          <strong id="rangoTexto">$0 — $0</strong>
+          <span>Sin margen — Con margen de ganancia aplicado</span>
+        </div>
+        <div class="pct" id="ahorroPct">0%<span>margen aplicado</span></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>6. Datos de la cotización y exportar</h2>
+      <div class="client-grid">
+        <div class="field"><label>Proyecto</label><input id="inProyecto" placeholder="Ej. Closet Habitación Principal"></div>
+        <div class="field"><label>Cliente</label><input id="inCliente" placeholder="Nombre del cliente"></div>
+        <div class="field"><label>N.° de cotización</label><input id="inNumero" placeholder="COT-2026-001"></div>
+      </div>
+      <div class="btns" style="margin-top:16px;">
+        <button class="action" id="btnExportarExcel">Exportar cotización completa a Excel</button>
+      </div>
+      <p class="hint" style="margin-top:10px;">El Excel incluye: Resumen, Detalle de materiales (con nota y margen), Lista de Compra y Esquemas de Corte.</p>
+    </section>
+
+  </div>
+
+</main>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
