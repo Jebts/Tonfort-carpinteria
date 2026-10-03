@@ -135,11 +135,14 @@ Sigue el token del tema activo (`--sidebar` = `--background`, `--sidebar-primary
 
 ## 4. Escala tipográfica
 
+Los valores de esta tabla son los de `app/globals.css` (líneas 195-214), que es la fuente de
+verdad. Esta tabla documenta esa implementación: no la redefine.
+
 | Token | Fuente | Tamaño (px) | Rem | Line-height | Weight | Letter-spacing | Uso |
 |---|---|---|---|---|---|---|---|
-| **display-xl** | Arvo | 80–120 | `clamp(4rem, 8vw, 8rem)` | 0.95 | 700 | -0.03em | Hero headlines |
-| **display-lg** | Arvo | 48–64 | `clamp(2.25rem, 5vw, 4rem)` | 1.0 | 700 | -0.025em | Section headlines (display moments) |
-| **display-md** | Arvo | 32–44 | `clamp(1.5rem, 3.5vw, 2.25rem)` | 1.05 | 700 | -0.02em | Sub-headlines, agenda h1 |
+| **display-xl** | Arvo | 44–120 | `clamp(2.75rem, 8vw, 7.5rem)` | 0.98 | 700 | -0.03em | Hero headlines |
+| **display-lg** | Arvo | 32–72 | `clamp(2rem, 5.5vw, 4.5rem)` | 1.02 | 700 | -0.025em | Section headlines (display moments) |
+| **display-md** | Arvo | 24–44 | `clamp(1.5rem, 3.5vw, 2.75rem)` | 1.08 | 700 | -0.02em | Sub-headlines, agenda h1 |
 | **h1** | Arvo | 36 | 2.25rem | 1.05 | 700 | -0.02em | Page headings (staff pages, landing) |
 | **h2** | Montserrat | 24 | 1.5rem | 1.1 | 600 | -0.01em | Section headings |
 | **h3** | Montserrat | 20 | 1.25rem | 1.2 | 500 | normal | Sub-section headings |
@@ -158,10 +161,21 @@ Sigue el token del tema activo (`--sidebar` = `--background`, `--sidebar-primary
 | `.display-xl` | Arvo | Hero headline — fluid clamp |
 | `.display-lg` | Arvo | Section headline — fluid clamp |
 | `.display-md` | Arvo | Sub-headline — fluid clamp |
-| `.eyebrow` | Montserrat | Uppercase tracked labels — `font-sans font-medium text-xs uppercase tracking-[0.28em]` |
+| `.eyebrow` | Montserrat | Uppercase tracked labels — Montserrat 600, 0.72rem, tracking 0.28em |
+| `.section-y` | — | Ritmo vertical de sección: `py-24 md:py-32` |
 | `.text-balance` | — | `text-wrap: balance` |
 | `.text-pretty` | — | `text-wrap: pretty` |
 | `.noise-overlay` | — | Subtle noise overlay (opacity 0.04) |
+
+> **Uso obligatorio.** Las clases `display-*`, `eyebrow` y `section-y` no son opcionales: un
+> titular de sección se escribe `className="display-lg font-display"`, no con un
+> `text-[clamp(...)]` propio. Escribir un clamp a mano por sección es lo que produjo tres
+> medidas distintas para el mismo rol (`3.25rem`, `4rem`, `6rem`) y un hero un 13% más grande
+> de lo que el sistema permite.
+>
+> Igual con los colores: los tokens existen (`--royal-bright`, `--royal`, `--warm-light`,
+> `--brand-navy`, `--brand-beige`, `--copy`, `--elevated`) y se usan como utilidades
+> (`text-royal-bright`, `bg-elevated`, `text-copy`). No se escribe un hex suelto en el JSX.
 
 > **Nota de migración:** los usages antiguos de `font-mono` para labels UI (navegación, eyebrow, botones) deben cambiar a `font-sans`. `font-mono` se reserva únicamente para datos tabulares y snippets de código.
 

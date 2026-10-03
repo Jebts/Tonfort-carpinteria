@@ -22,15 +22,31 @@ ALTER TABLE modalidades_cita
   ADD COLUMN IF NOT EXISTS descripcion TEXT,
   ADD COLUMN IF NOT EXISTS orden INT NOT NULL DEFAULT 0;
 
--- Backfill de slug sobre las filas que ya existieran en la tabla.
+-- Backfill de slug sobre las filas que ya existieran en la tabla. El índice
+-- único se suelta antes: si el backfill colapsara dos filas al mismo slug, el
+-- UPDATE reventaría contra la restricción y la migración entera pararía aquí.
+DROP INDEX IF EXISTS modalidades_cita_slug_unq;
+
 UPDATE modalidades_cita SET slug = 'virtual'
-  WHERE slug IS NULL AND (lower(nombre) LIKE '%virtual%' OR lower(nombre) LIKE '%online%');
+  WHERE slug IS NULL AND (lower(nombre) LIKE '%virtual%' OR lower(nombre) LIKE '%online%'
+                       OR lower(nombre) LIKE '%videollamada%' OR lower(nombre) LIKE '%zoom%');
 
 UPDATE modalidades_cita SET slug = 'presencial'
-  WHERE slug IS NULL AND (lower(nombre) LIKE '%presencial%' OR lower(nombre) LIKE '%taller%' OR lower(nombre) LIKE '%medidas%');
+  WHERE slug IS NULL AND (lower(nombre) LIKE '%presencial%' OR lower(nombre) LIKE '%taller%'
+                       OR lower(nombre) LIKE '%medidas%' OR lower(nombre) LIKE '%domicilio%'
+                       OR lower(nombre) LIKE '%visita%');
 
--- Un slug no puede quedar repetido: solo la primera fila lo conserva.
-CREATE UNIQUE INDEX IF NOT EXISTS modalidades_cita_slug_unq
+-- Filas que el backfill no pudo identificar. No tienen citas asociadas:
+-- `citas.modalidad_id` se crea más abajo en NULL, así que no hay FK que
+-- pueda romper.
+DELETE FROM modalidades_cita WHERE slug IS NULL;
+
+-- Si dos filas quedaron con el mismo slug, se conserva la más antigua.
+DELETE FROM modalidades_cita a
+  USING modalidades_cita b
+ WHERE a.slug = b.slug AND a.id > b.id;
+
+CREATE UNIQUE INDEX modalidades_cita_slug_unq
   ON modalidades_cita(slug) WHERE slug IS NOT NULL;
 
 INSERT INTO modalidades_cita (nombre, slug, descripcion, costo, duracion_minutos, activo, orden)
@@ -38,6 +54,24 @@ VALUES
   ('Virtual',    'virtual',    'Videollamada con tu diseñador. Sin costo.',     0,  90, true, 0),
   ('Presencial', 'presencial', 'Visita a tu domicilio y toma de medidas.',   70000, 120, true, 1)
 ON CONFLICT DO NOTHING;
+
+-- Normaliza los valores sin importar qué fila haya sobrevivido al backfill.
+-- El catálogo es cerrado: precio y duración los decide el servidor.
+UPDATE modalidades_cita SET
+  nombre = 'Virtual', descripcion = 'Videollamada con tu diseñador. Sin costo.',
+  costo = 0, duracion_minutos = 90, activo = true, orden = 0
+ WHERE slug = 'virtual';
+
+UPDATE modalidades_cita SET
+  nombre = 'Presencial', descripcion = 'Visita a tu domicilio y toma de medidas.',
+  costo = 70000, duracion_minutos = 120, activo = true, orden = 1
+ WHERE slug = 'presencial';
+
+-- Cualquier modalidad fuera del catálogo queda inactiva. Sin esto,
+-- `getModalidadesActivas()` devolvería más de 2 filas y `/agenda/modalidad`
+-- caería al mensaje de "en mantenimiento".
+UPDATE modalidades_cita SET activo = false
+ WHERE slug IS DISTINCT FROM 'virtual' AND slug IS DISTINCT FROM 'presencial';
 
 COMMENT ON TABLE modalidades_cita IS 'Catálogo de modalidades de cita. Fuente de verdad de las 2 opciones públicas (virtual, presencial).';
 
@@ -85,6 +119,19 @@ BEGIN
     ALTER TABLE clientes ALTER COLUMN email DROP NOT NULL;
   END IF;
 END $$;
+
+-- El índice único falla si la tabla arrastra teléfonos repetidos de un schema
+-- anterior. Se vacían los sobrantes antes de crearlo: `telefono` es nullable y
+-- `upsertClientePorTelefono` vuelve a deduplicar al guardar. Se conserva el
+-- registro más antiguo de cada teléfono.
+WITH duplicados AS (
+  SELECT id, ROW_NUMBER() OVER (PARTITION BY telefono ORDER BY id) AS rn
+  FROM clientes
+  WHERE telefono IS NOT NULL AND telefono <> ''
+)
+UPDATE clientes c SET telefono = NULL
+  FROM duplicados d
+ WHERE c.id = d.id AND d.rn > 1;
 
 CREATE UNIQUE INDEX IF NOT EXISTS clientes_telefono_unq
   ON clientes(telefono) WHERE telefono IS NOT NULL AND telefono <> '';
@@ -222,8 +269,31 @@ BEGIN
 END $$;
 
 -- ============================================================
--- 9. Triggers de `updated_at`
+-- 9. Funciones y triggers de `updated_at`
 -- ============================================================
+-- Estas dos funciones las declara `20260919000000_init_clean_schema.sql`, pero
+-- esa migración nunca se aplicó: la base de datos se construyó por una vía
+-- anterior y tiene las tablas sin sus funciones ni triggers. Sin esta sección
+-- los triggers de abajo fallan con
+-- `function _tonfort_touch_updated_at() does not exist` (42883).
+--
+-- Se declaran aquí para que este archivo sea autosuficiente. `CREATE OR
+-- REPLACE` las hace idempotentes.
+
+CREATE OR REPLACE FUNCTION _tonfort_touch_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+
+-- `clientes` usa timestamps legacy (`actualizado_en`), no `updated_at`.
+CREATE OR REPLACE FUNCTION _tonfort_touch_updated_at_clientes()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.actualizado_en = now();
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS visores_landing_updated_at ON visores_landing;
 CREATE TRIGGER visores_landing_updated_at
@@ -234,3 +304,40 @@ DROP TRIGGER IF EXISTS visores_landing_animaciones_updated_at ON visores_landing
 CREATE TRIGGER visores_landing_animaciones_updated_at
   BEFORE UPDATE ON visores_landing_animaciones
   FOR EACH ROW EXECUTE FUNCTION _tonfort_touch_updated_at();
+
+-- Los triggers base de las tablas preexistentes tampoco están en la base de
+-- datos, por el mismo motivo. Se crean solo si la columna de timestamp existe:
+-- un trigger que apunta a una columna inexistente no falla al crearse, pero
+-- revienta en cada UPDATE de esa tabla.
+DO $$
+DECLARE
+  t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['proyectos','productos','propuestas_3d','propuestas_3d_animaciones']
+  LOOP
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = t AND column_name = 'updated_at'
+    ) THEN
+      EXECUTE format('DROP TRIGGER IF EXISTS %I ON %I', t || '_updated_at', t);
+      EXECUTE format(
+        'CREATE TRIGGER %I BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION _tonfort_touch_updated_at()',
+        t || '_updated_at', t
+      );
+    ELSE
+      RAISE WARNING 'Se omite el trigger de %. No tiene columna updated_at.', t;
+    END IF;
+  END LOOP;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'clientes' AND column_name = 'actualizado_en'
+  ) THEN
+    DROP TRIGGER IF EXISTS clientes_updated_at ON clientes;
+    CREATE TRIGGER clientes_updated_at
+      BEFORE UPDATE ON clientes
+      FOR EACH ROW EXECUTE FUNCTION _tonfort_touch_updated_at_clientes();
+  ELSE
+    RAISE WARNING 'Se omite el trigger de clientes. No tiene columna actualizado_en.';
+  END IF;
+END $$;

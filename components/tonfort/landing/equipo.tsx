@@ -6,15 +6,11 @@ import { EQUIPO } from "@/content/landing"
 
 export function Equipo() {
   return (
-    <section className="bg-black py-24 md:py-32">
+    <section className="section-y bg-black">
       <div className="mx-auto max-w-7xl px-6 md:px-10">
         <div className="mb-14 max-w-2xl">
-          <p className="mb-4 text-xs uppercase tracking-[0.34em] text-[#3769e6]">
-            {EQUIPO.eyebrow}
-          </p>
-          <h2 className="text-[clamp(2rem,4vw,3.25rem)] font-medium leading-[1] tracking-[-0.05em] text-white">
-            {EQUIPO.titulo}
-          </h2>
+          <p className="eyebrow mb-4 text-royal-bright">{EQUIPO.eyebrow}</p>
+          <h2 className="display-lg font-display text-white">{EQUIPO.titulo}</h2>
         </div>
 
         <div className="grid gap-10 md:grid-cols-3 md:gap-8">
@@ -27,7 +23,7 @@ export function Equipo() {
               transition={{ delay: i * 0.08, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             >
               {/* 3:4, sin esencializar el rostro. */}
-              <div className="group relative aspect-[3/4] overflow-hidden rounded-2xl bg-[#0a0a0a]">
+              <div className="group relative aspect-[3/4] overflow-hidden rounded-2xl bg-elevated">
                 <Image
                   src={persona.foto}
                   alt={`${persona.nombre}, ${persona.rol}`}
@@ -39,13 +35,11 @@ export function Equipo() {
               </div>
 
               <figcaption className="mt-5">
-                <p className="text-[10px] uppercase tracking-[0.28em] text-[#f4d6a0]">
-                  {persona.rol}
-                </p>
+                <p className="eyebrow text-warm-light">{persona.rol}</p>
                 <p className="mt-2 text-[1.75rem] leading-tight tracking-[-0.04em] text-white">
                   {persona.nombre}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-[#a1a1a6]">{persona.texto}</p>
+                <p className="mt-2 text-sm leading-6 text-copy">{persona.texto}</p>
               </figcaption>
             </motion.figure>
           ))}

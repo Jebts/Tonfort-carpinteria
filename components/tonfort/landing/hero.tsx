@@ -63,12 +63,12 @@ export function Hero() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="mb-6 text-xs uppercase tracking-[0.34em] text-[#3769e6]"
+              className="eyebrow mb-6 text-royal-bright"
             >
               {HERO.eyebrow}
             </motion.p>
 
-            <h1 className="text-[clamp(3.5rem,9vw,8.5rem)] font-medium leading-[0.88] tracking-[-0.08em] text-white">
+            <h1 className="display-xl font-display text-white">
               {HERO.tituloLineas.map((linea, i) => (
                 <span key={linea} className="block">
                   {i >= HERO.tituloGradienteDesdeLinea ? (
@@ -84,7 +84,7 @@ export function Hero() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="mt-7 max-w-sm text-base leading-7 text-[#a1a1a6]"
+              className="mt-7 max-w-sm text-base leading-7 text-copy"
             >
               {HERO.bajada}
             </motion.p>
@@ -105,7 +105,7 @@ export function Hero() {
               >
                 {HERO.cta}
               </ButtonLink>
-              <p className="mt-3 text-center text-xs text-[#a1a1a6]/70">{HERO.microcopy}</p>
+              <p className="mt-3 text-center text-xs text-copy/70">{HERO.microcopy}</p>
             </motion.div>
 
             <div className="mt-8 hidden md:block">
@@ -131,7 +131,7 @@ export function Hero() {
             >
               {HERO.cta}
             </ButtonLink>
-            <p className="mt-3 hidden text-xs text-[#a1a1a6]/70 md:block">{HERO.microcopy}</p>
+            <p className="mt-3 hidden text-xs text-copy/70 md:block">{HERO.microcopy}</p>
           </motion.div>
         </div>
       </motion.div>

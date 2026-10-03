@@ -44,20 +44,16 @@ export async function ProyectosRecientes() {
   }
 
   return (
-    <section className="bg-black py-24 md:py-32">
+    <section className="section-y bg-black">
       <div className="mx-auto max-w-7xl px-6 md:px-10">
         <div className="mb-14 flex flex-wrap items-end justify-between gap-6">
           <div>
-            <p className="mb-4 text-xs uppercase tracking-[0.34em] text-[#3769e6]">
-              {PROYECTOS.eyebrow}
-            </p>
-            <h2 className="max-w-2xl text-[clamp(2rem,4vw,3.25rem)] font-medium leading-[1] tracking-[-0.05em] text-white">
-              {PROYECTOS.titulo}
-            </h2>
+            <p className="eyebrow mb-4 text-royal-bright">{PROYECTOS.eyebrow}</p>
+            <h2 className="display-lg font-display max-w-2xl text-white">{PROYECTOS.titulo}</h2>
           </div>
           <Link
             href="/portafolio/santa-marta"
-            className="group inline-flex items-center gap-2 text-sm text-[#a1a1a6] transition-colors hover:text-white"
+            className="group inline-flex items-center gap-2 text-sm text-copy transition-colors hover:text-white"
           >
             {PROYECTOS.cta}
             <ArrowUpRight className="size-4 transition-transform duration-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -71,7 +67,7 @@ export async function ProyectosRecientes() {
 
             const contenido = (
               <>
-                <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-[#0a0a0a]">
+                <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-elevated">
                   <Image
                     src={tarjeta.image}
                     alt={tarjeta.titulo}
@@ -81,7 +77,7 @@ export async function ProyectosRecientes() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                   {tarjeta.categoria && (
-                    <p className="absolute left-4 top-4 text-[10px] uppercase tracking-[0.24em] text-[#f4d6a0]">
+                    <p className="eyebrow absolute left-4 top-4 text-warm-light">
                       {tarjeta.categoria}
                     </p>
                   )}

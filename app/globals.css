@@ -95,6 +95,15 @@
   --warm-light: #f4d6a0;
   --surface: #050505;
   --hairline: rgba(255,255,255,.1);
+
+  /* Texto secundario sobre fondo oscuro. Antes estaba escrito como `#a1a1a6`
+     suelto en cada componente de `components/tonfort/landing/`. */
+  --copy: #a1a1a6;
+
+  /* Un peldaño por encima de `--surface`: separa una tarjeta del fondo negro
+     sin recurrir a bordes. Con `#0a0a0a` el negro de una foto sin cargar se
+     confundía con el fondo de la sección. */
+  --elevated: #141414;
 }
 
 @theme inline {
@@ -147,6 +156,8 @@
   --color-warm-light: var(--warm-light);
   --color-surface: var(--surface);
   --color-hairline: var(--hairline);
+  --color-copy: var(--copy);
+  --color-elevated: var(--elevated);
 }
 
 @layer base {
@@ -168,6 +179,14 @@
 @layer utilities {
   .font-display {
     font-family: var(--font-display);
+  }
+
+  /* Ritmo vertical de las secciones del sitio público. Antes cada sección
+     elegía su propio `py-*` (`py-24 md:py-32`, `py-24 md:py-40`,
+     `py-28 md:py-40`) y el resultado eran separaciones distintas para el
+     mismo rol. */
+  .section-y {
+    @apply py-24 md:py-32;
   }
 
   .font-arvo {

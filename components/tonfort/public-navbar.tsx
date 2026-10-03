@@ -49,19 +49,19 @@ export function PublicNavbar({ tone = "dark" }: { tone?: Tone }) {
 
   const textoLink = (activo: boolean) =>
     light
-      ? `text-sm transition ${activo ? "text-[#0B1D3A]" : "text-[#4A5163] hover:text-[#0B1D3A]"}`
-      : `text-sm transition ${activo ? "text-white" : "text-[#a1a1a6] hover:text-white"}`
+      ? `text-sm transition ${activo ? "text-brand-navy" : "text-brand-navy/70 hover:text-brand-navy"}`
+      : `text-sm transition ${activo ? "text-white" : "text-copy hover:text-white"}`
 
   // La CTA es viva (no translúcida) y con glow: es el punto de entrada.
   const claseCta = light
-    ? "bg-[#2856c7] text-white shadow-[0_0_24px_rgba(40,86,199,.28)] hover:bg-[#1c46a8]"
-    : "bg-[#3769e6] text-black shadow-[0_0_28px_rgba(55,105,230,.35)] hover:bg-[#2856c7] hover:text-white"
+    ? "bg-royal text-white shadow-[0_0_24px_rgba(40,86,199,.28)] hover:bg-[#1c46a8]"
+    : "bg-royal-bright text-black shadow-[0_0_28px_rgba(55,105,230,.35)] hover:bg-royal hover:text-white"
 
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
         light
-          ? "bg-[#F7F4EE]/85 backdrop-blur-2xl"
+          ? "bg-muted/85 backdrop-blur-2xl"
           : scrolled
             ? "bg-black/65 backdrop-blur-2xl"
             : "bg-black/15"
@@ -70,7 +70,7 @@ export function PublicNavbar({ tone = "dark" }: { tone?: Tone }) {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">
         <Link
           href="/"
-          className={`flex items-center transition-opacity hover:opacity-85 ${light ? "text-[#0B1D3A]" : "text-white"}`}
+          className={`flex items-center transition-opacity hover:opacity-85 ${light ? "text-brand-navy" : "text-white"}`}
           onClick={close}
           aria-label="Tonfort, inicio"
         >
@@ -101,7 +101,7 @@ export function PublicNavbar({ tone = "dark" }: { tone?: Tone }) {
         </nav>
 
         <button
-          className={`relative z-20 rounded-full p-2 md:hidden ${light ? "text-[#0B1D3A]" : "text-white"}`}
+          className={`relative z-20 rounded-full p-2 md:hidden ${light ? "text-brand-navy" : "text-white"}`}
           aria-label={open ? "Cerrar menú" : "Abrir menú"}
           aria-expanded={open}
           onClick={() => setOpen(!open)}
@@ -116,7 +116,7 @@ export function PublicNavbar({ tone = "dark" }: { tone?: Tone }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
           className={`fixed inset-0 -z-10 flex min-h-screen flex-col px-6 pb-12 pt-28 md:hidden ${
-            light ? "bg-[#F7F4EE] text-[#0B1D3A]" : "bg-black text-white"
+            light ? "bg-muted text-brand-navy" : "bg-black text-white"
           }`}
         >
           <nav className="flex flex-col gap-6 text-4xl font-medium" aria-label="Menú móvil">
@@ -128,8 +128,8 @@ export function PublicNavbar({ tone = "dark" }: { tone?: Tone }) {
                 aria-current={esActivo(link.href) ? "page" : undefined}
                 className={
                   light
-                    ? "text-[#4A5163] transition hover:text-[#0B1D3A]"
-                    : "text-[#a1a1a6] transition hover:text-white"
+                    ? "text-brand-navy/70 transition hover:text-brand-navy"
+                    : "text-copy transition hover:text-white"
                 }
               >
                 {link.label}

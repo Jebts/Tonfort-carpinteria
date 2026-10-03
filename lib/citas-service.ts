@@ -242,9 +242,18 @@ export async function upsertClientePorEmail(
 
 // Catálogo de modalidades activas, ordenado. La fuente de verdad de precio y
 // duración es la tabla: el cliente nunca los envía.
+//
+// El error no se traga: `/agenda/modalidad` degrada a un mensaje de
+// mantenimiento cuando recibe menos de 2 filas, y sin este log es imposible
+// distinguir "catálogo vacío" de "consulta rota" (columna que falta, RLS,
+// tabla caída). Es lo que hizo que un `.order("orden")` sobre una columna
+// inexistente pasara desapercibido.
 export async function getModalidadesActivas(): Promise<ModalidadCita[]> {
   const supabase = getServiceSupabase()
-  if (!supabase) return []
+  if (!supabase) {
+    console.error("[citas-service] getModalidadesActivas: Supabase no configurado")
+    return []
+  }
 
   const { data, error } = await supabase
     .from("modalidades_cita")
@@ -252,14 +261,27 @@ export async function getModalidadesActivas(): Promise<ModalidadCita[]> {
     .eq("activo", true)
     .order("orden", { ascending: true })
 
-  if (error || !data) return []
+  if (error) {
+    console.error("[citas-service] getModalidadesActivas falló:", error.message)
+    return []
+  }
+  if (!data) return []
+
+  if (data.length !== 2) {
+    console.warn(
+      `[citas-service] getModalidadesActivas devolvió ${data.length} filas activas; el flujo espera exactamente 2 (virtual, presencial).`,
+    )
+  }
   return data as ModalidadCita[]
 }
 
 // Resuelve una modalidad por su slug público (`virtual` | `presencial`).
 export async function getModalidadPorSlug(slug: string): Promise<ModalidadCita | null> {
   const supabase = getServiceSupabase()
-  if (!supabase) return null
+  if (!supabase) {
+    console.error("[citas-service] getModalidadPorSlug: Supabase no configurado")
+    return null
+  }
 
   const { data, error } = await supabase
     .from("modalidades_cita")
@@ -268,7 +290,16 @@ export async function getModalidadPorSlug(slug: string): Promise<ModalidadCita |
     .eq("activo", true)
     .maybeSingle()
 
-  if (error || !data) return null
+  // `maybeSingle` no da error cuando no encuentra fila: es un 404 silencioso
+  // que `/agenda/horario` convierte en notFound(). Solo se registra el error real.
+  if (error) {
+    console.error(`[citas-service] getModalidadPorSlug("${slug}") falló:`, error.message)
+    return null
+  }
+  if (!data) {
+    console.warn(`[citas-service] getModalidadPorSlug("${slug}"): no hay modalidad activa con ese slug.`)
+    return null
+  }
   return data as ModalidadCita
 }
 

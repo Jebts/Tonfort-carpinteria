@@ -5,24 +5,22 @@ import { useRef } from "react"
 import { motion, useScroll, useTransform } from "motion/react"
 import { ArrowUpRight } from "lucide-react"
 
+// Aparición al entrar en viewport. Usa `whileInView` como el resto de
+// primitivas del archivo (`SideReveal`, `WordReveal`, `GradientText`) en vez de
+// animar con `useScroll`: el rango `["start 0.9", "end 0.2"]` sobre un bloque
+// alto dejaba el contenido con `blur(10px)` y desplazado 42px durante buena
+// parte del viewport, que se leía como carga lenta.
 export function Reveal({
   children,
   className = "",
 }: { children: React.ReactNode; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start 0.9", "end 0.2"],
-  })
-  const opacity = useTransform(scrollYProgress, [0, 0.35, 1], [0, 1, 1])
-  const y = useTransform(scrollYProgress, [0, 1], [42, 0])
-  const blur = useTransform(scrollYProgress, [0, 0.35], ["10px", "0px"])
   return (
     <motion.div
-      ref={ref}
       data-motion-reveal=""
-      style={{ opacity, y, filter: blur }}
-      transition={{ ease: [0.16, 1, 0.3, 1] }}
+      initial={{ opacity: 0, y: 42 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-12% 0px" }}
+      transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
       className={className}
     >
       {children}
@@ -135,8 +133,8 @@ export function CinematicBand({
   const scrim =
     tone === "light"
       ? align === "left"
-        ? "bg-gradient-to-r from-[#F7F4EE]/92 via-[#F7F4EE]/78 to-[#F7F4EE]/34"
-        : "bg-gradient-to-l from-[#F7F4EE]/92 via-[#F7F4EE]/78 to-[#F7F4EE]/34"
+        ? "bg-gradient-to-r from-muted/92 via-muted/78 to-muted/34"
+        : "bg-gradient-to-l from-muted/92 via-muted/78 to-muted/34"
       : align === "left"
         ? "bg-gradient-to-r from-black via-black/70 to-black/15"
         : "bg-gradient-to-l from-black via-black/70 to-black/15"
@@ -145,7 +143,7 @@ export function CinematicBand({
       ? "bg-[radial-gradient(circle_at_70%_45%,rgba(40,86,199,.10),transparent_30%)]"
       : "bg-[radial-gradient(circle_at_70%_45%,rgba(55,105,230,.08),transparent_28%)]"
   return (
-<section ref={ref} className={`relative min-h-[70vh] overflow-hidden md:min-h-[78vh] ${tone === "light" ? "bg-[#F7F4EE]" : "bg-black"}`}>
+<section ref={ref} className={`relative min-h-[70vh] overflow-hidden md:min-h-[78vh] ${tone === "light" ? "bg-muted" : "bg-black"}`}>
       <motion.img data-motion-reveal="" src={src} alt={eyebrow} style={{ scale, y }} className="absolute inset-0 size-full object-cover" />
       <div className={`absolute inset-0 ${scrim}`} />
       <div className={`absolute inset-0 ${radial}`} />
@@ -155,11 +153,11 @@ export function CinematicBand({
         className={`relative z-10 flex min-h-[70vh] items-center px-5 py-16 md:min-h-[78vh] md:px-10 md:py-24 ${align === "right" ? "justify-end text-right" : ""}`}
       >
         <div className="max-w-xl">
-          <p className={`text-[10px] uppercase tracking-[.34em] ${tone === "light" ? "text-[#2856c7] drop-shadow-[0_1px_10px_rgba(247,244,238,.85)]" : "text-[#f4d6a0]"}`}>{eyebrow}</p>
-          <h2 className={`mt-4 text-4xl leading-[.94] tracking-[-.07em] md:text-8xl md:leading-[.92] ${tone === "light" ? "text-[#0B1D3A] drop-shadow-[0_2px_24px_rgba(247,244,238,.9)]" : "text-white"}`}>
+          <p className={`eyebrow ${tone === "light" ? "text-royal drop-shadow-[0_1px_10px_rgba(247,244,238,.85)]" : "text-warm-light"}`}>{eyebrow}</p>
+          <h2 className={`display-lg font-display mt-4 ${tone === "light" ? "text-brand-navy drop-shadow-[0_2px_24px_rgba(247,244,238,.9)]" : "text-white"}`}>
             <GradientText tone={tone}>{title}</GradientText>
           </h2>
-          <p className={`mt-5 max-w-md text-sm leading-6 md:text-base ${tone === "light" ? "text-[#0B1D3A]/90 drop-shadow-[0_1px_12px_rgba(247,244,238,.85)]" : "text-[#a1a1a6]"}`}>{copy}</p>
+          <p className={`mt-5 max-w-md text-sm leading-6 md:text-base ${tone === "light" ? "text-brand-navy/90 drop-shadow-[0_1px_12px_rgba(247,244,238,.85)]" : "text-copy"}`}>{copy}</p>
         </div>
       </motion.div>
     </section>
@@ -180,9 +178,9 @@ export function SectionHeading({
       transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
       className="mb-12 max-w-2xl"
     >
-      <p className="mb-4 text-xs uppercase tracking-[0.24em] text-[#2856c7]">{eyebrow}</p>
-      <h2 className="text-4xl font-medium tracking-[-0.04em] text-[#f5f5f7] md:text-6xl">{title}</h2>
-      {description && <p className="mt-5 text-lg leading-7 text-[#86868b]">{description}</p>}
+      <p className="eyebrow mb-4 text-royal">{eyebrow}</p>
+      <h2 className="display-lg font-display text-brand-white">{title}</h2>
+      {description && <p className="mt-5 text-lg leading-7 text-copy">{description}</p>}
     </motion.div>
   )
 }
@@ -217,9 +215,9 @@ export function PageHero({
         transition={{ delay: 0.15, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
         className="relative mx-auto w-full max-w-7xl"
       >
-        <p className="mb-5 text-xs uppercase tracking-[.34em] text-[#3769e6]">{title === "Portafolio" ? "Proyectos" : "Quiénes somos"}</p>
-        <h1 className="max-w-4xl text-6xl font-medium tracking-[-0.07em] text-[#f5f5f7] md:text-8xl">{title}</h1>
-        <p className="mt-5 max-w-xl text-lg text-[#a1a1a6]">{description}</p>
+        <p className="eyebrow mb-5 text-royal-bright">{title === "Portafolio" ? "Proyectos" : "Quiénes somos"}</p>
+        <h1 className="display-xl font-display max-w-4xl text-brand-white">{title}</h1>
+        <p className="mt-5 max-w-xl text-lg text-copy">{description}</p>
       </motion.div>
     </section>
   )
@@ -233,10 +231,10 @@ export function PageHero({
  *  pensado para el CTA principal del hero y de la navbar. */
 export type ButtonVariant = "primary" | "vivid"
 
-const VIVID = "border border-[#3769e6] bg-[#3769e6] text-black hover:bg-[#2856c7] hover:text-white hover:shadow-[0_0_32px_rgba(55,105,230,.45)]"
+const VIVID = "border border-royal-bright bg-royal-bright text-black hover:bg-royal hover:text-white hover:shadow-[0_0_32px_rgba(55,105,230,.45)]"
 
 const VIVID_LIGHT =
-  "border border-[#2856c7] bg-[#2856c7] text-white hover:border-[#1c46a8] hover:bg-[#1c46a8] hover:shadow-[0_0_32px_rgba(40,86,199,.25)]"
+  "border border-royal bg-royal text-white hover:border-[#1c46a8] hover:bg-[#1c46a8] hover:shadow-[0_0_32px_rgba(40,86,199,.25)]"
 
 export function ButtonLink({
   href,
@@ -265,11 +263,11 @@ export function ButtonLink({
         ? VIVID_LIGHT
         : VIVID
       : tone === "light"
-        ? "border border-[#2856c7] bg-[#2856c7] text-white hover:border-[#1c46a8] hover:bg-[#1c46a8] hover:shadow-[0_0_32px_rgba(40,86,199,.22)]"
-        : "border border-[#3769e6] bg-[#3769e6] text-black hover:bg-[#2856c7] hover:text-white hover:shadow-[0_0_32px_rgba(55,105,230,.35)]"
+        ? "border border-royal bg-royal text-white hover:border-[#1c46a8] hover:bg-[#1c46a8] hover:shadow-[0_0_32px_rgba(40,86,199,.22)]"
+        : "border border-royal-bright bg-royal-bright text-black hover:bg-royal hover:text-white hover:shadow-[0_0_32px_rgba(55,105,230,.35)]"
     : tone === "light"
-      ? "relative rounded-none px-0 text-[#0B1D3A] after:absolute after:bottom-0 after:left-0 after:h-px after:w-0 after:bg-[#2856c7] after:transition-all after:duration-500 hover:text-[#2856c7] hover:after:w-full"
-      : "relative rounded-none px-0 text-[#a1a1a6] after:absolute after:bottom-0 after:left-0 after:h-px after:w-0 after:bg-white after:transition-all after:duration-500 hover:text-white hover:after:w-full"
+      ? "relative rounded-none px-0 text-brand-navy after:absolute after:bottom-0 after:left-0 after:h-px after:w-0 after:bg-royal after:transition-all after:duration-500 hover:text-royal hover:after:w-full"
+      : "relative rounded-none px-0 text-copy after:absolute after:bottom-0 after:left-0 after:h-px after:w-0 after:bg-white after:transition-all after:duration-500 hover:text-white hover:after:w-full"
 
   return (
     <Link
@@ -284,6 +282,9 @@ export function ButtonLink({
   )
 }
 
+// `aspect-[4/5]` para igualar la proporción de `components/tonfort/landing/
+// proyectos-recientes.tsx`: el mismo contenido de proyecto se mostraba con dos
+// formas distintas según la página.
 export function ProjectCard({
   project,
 }: {
@@ -292,7 +293,7 @@ export function ProjectCard({
   const href = project.href ?? `/portafolio/santa-marta/${project.slug}`
   return (
     <Link href={href} className="group block">
-      <div className="relative aspect-[4/3] overflow-hidden bg-[#050505]">
+      <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-elevated">
         <motion.img
           src={project.image}
           alt={project.title}
@@ -303,7 +304,7 @@ export function ProjectCard({
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-5">
           <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-[#f4d6a0]">{project.category}</p>
+            <p className="eyebrow text-warm-light">{project.category}</p>
             <h3 className="mt-1 text-2xl tracking-[-.04em] text-white">{project.title}</h3>
           </div>
           <ArrowUpRight className="size-5 text-white opacity-0 transition-all duration-500 group-hover:translate-x-1 group-hover:-translate-y-1 group-hover:opacity-100" />
