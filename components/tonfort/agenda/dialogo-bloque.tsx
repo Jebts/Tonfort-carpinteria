@@ -9,6 +9,7 @@ import {
   ExternalLink,
   MoreHorizontal,
   Pencil,
+  Plus,
   Trash2,
   XCircle,
 } from "lucide-react"
@@ -36,7 +37,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { BLOQUES, slotKey } from "@/lib/agenda"
+import { BLOQUES, slotKey, slotEnPasado } from "@/lib/agenda"
 import { formatearFechaLarga } from "@/lib/agenda-format"
 import { useBloquesLibres } from "@/hooks/use-bloques-libres"
 import type { Cita, EstadoCita, ModalidadCita } from "@/lib/supabase/types"
@@ -84,6 +85,8 @@ export interface DialogoBloqueProps {
   /** Mover: el destino llega como ISO UTC. */
   onMover: (cita: CitaBloque, fecha_hora: string) => void
   onEditar: (cita: CitaBloque) => void
+  /** Abre el formulario de nueva cita (prefill del bloque actual si procede). */
+  onNuevaCita?: () => void
   /** Confirmar resolviendo el resto del bloque. Debe lanzar si falla. */
   onConfirmar: (
     cita: CitaBloque,
@@ -103,6 +106,7 @@ export function DialogoBloque({
   onAccion,
   onMover,
   onEditar,
+  onNuevaCita,
   onConfirmar,
 }: DialogoBloqueProps) {
   const [vista, setVista] = useState<Vista>({ tipo: "detalle" })
@@ -127,6 +131,9 @@ export function DialogoBloque({
     () => libres.filter((iso) => slotKey(new Date(iso)) !== destinoExcluido),
     [libres, destinoExcluido],
   )
+
+  // Un bloque pasado no debe permitir crear citas nuevas.
+  const bloquePasado = fecha ? slotEnPasado(new Date(fecha)) : false
 
   // El backend solo obliga a resolver las `en_espera` del mismo `fecha_hora` **y**
   // `modalidad_id` (`resolverConfirmacion`): si aquí se piden todas las del bloque,
@@ -192,15 +199,26 @@ export function DialogoBloque({
       <DialogContent className="max-w-lg">
         {vista.tipo === "detalle" && (
           <>
-            <DialogHeader>
-              <DialogTitle>Detalle del bloque</DialogTitle>
-              <DialogDescription>
-                {fecha
-                  ? `${formatearFechaLarga(new Date(fecha))} · ${etiquetaBloque(fecha)} · ${citas.length} ${
-                      citas.length === 1 ? "cita" : "citas"
-                    }`
-                  : ""}
-              </DialogDescription>
+            <DialogHeader className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
+                <DialogTitle>Detalle del bloque</DialogTitle>
+                <DialogDescription>
+                  {fecha
+                    ? `${formatearFechaLarga(new Date(fecha))} · ${etiquetaBloque(fecha)} · ${citas.length} ${
+                        citas.length === 1 ? "cita" : "citas"
+                      }`
+                    : ""}
+                </DialogDescription>
+              </div>
+              <Button
+                type="button"
+                onClick={onNuevaCita}
+                disabled={!onNuevaCita || bloquePasado}
+                className="press"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Nueva cita
+              </Button>
             </DialogHeader>
 
             <div className="max-h-[60vh] space-y-2 overflow-y-auto">

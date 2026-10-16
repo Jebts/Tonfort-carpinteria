@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "motion/react"
 import { CalendarCheck, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { z } from "zod"
+import { DURACION_MINUTOS } from "@/lib/agenda"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -97,7 +98,7 @@ export function FormularioCita({
     if (!unbloqueado) reset()
   }, [seleccionado?.fechaIso, unbloqueado, reset])
 
-  const duracionMinutos = bloqueInicial?.duracion_minutos ?? 120
+  const duracionMinutos = bloqueInicial?.duracion_minutos ?? DURACION_MINUTOS
 
   async function onSubmit(values: FormularioCitaValues) {
     if (!seleccionado) return
@@ -119,6 +120,12 @@ export function FormularioCita({
 
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string }
+        // Límite diario por IP: se lleva al cliente a la página de solicitud
+        // recibida, que muestra el contacto de WhatsApp y el ciclo de 24 h.
+        if (res.status === 409) {
+          router.push(`/agenda/solicitud-recibida?ya_tienes_cita=1`)
+          return
+        }
         throw new Error(data.error ?? "No se pudo agendar la cita")
       }
 

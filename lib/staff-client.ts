@@ -4,7 +4,7 @@
 
 import type { Cliente, Cita, Proyecto, Producto, Propuesta3D, Propuesta3DAnimacion, ModalidadCita } from "@/lib/supabase/types"
 import type { DisponibilidadSlot } from "@/lib/citas-service"
-import { BLOQUES } from "@/lib/agenda"
+import { BLOQUES, DURACION_MINUTOS } from "@/lib/agenda"
 import { addDays } from "date-fns"
 
 // Error de una ruta staff conservando lo que el servidor devolvió: `pendientes`
@@ -105,14 +105,14 @@ export async function getBloquesLibres(
     )
     .map((s) => {
       const inicio = new Date(s.fecha_hora).getTime()
-      return { inicio, fin: inicio + (s.duracion_minutos ?? 120) * minutos }
+      return { inicio, fin: inicio + (s.duracion_minutos ?? DURACION_MINUTOS) * minutos }
     })
 
   return datos.slots.filter((slot) => {
     const hora = slot.fecha_hora.slice(11, 16)
     if (!BLOQUES.some((b) => b.inicio === hora)) return false
     const inicio = new Date(slot.fecha_hora).getTime()
-    const fin = inicio + (slot.duracion_minutos ?? 120) * minutos
+    const fin = inicio + (slot.duracion_minutos ?? DURACION_MINUTOS) * minutos
     // Intervalos semiabiertos, como en el servidor.
     return !ocupados.some((o) => o.inicio < fin && o.fin > inicio)
   })

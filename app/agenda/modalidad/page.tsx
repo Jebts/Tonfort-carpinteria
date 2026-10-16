@@ -1,13 +1,20 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { headers } from "next/headers"
+import { redirect } from "next/navigation"
 import { WHATSAPP_URL } from "@/lib/contact"
-import { getModalidadesActivas } from "@/lib/citas-service"
+import { getClientIp } from "@/lib/rate-limit"
+import { getServiceSupabase } from "@/lib/supabase/server"
+import {
+  getModalidadesActivas,
+  tieneCitaRecientePorIP,
+} from "@/lib/citas-service"
 import { SelectorModalidad, type ModalidadOpcion } from "@/components/tonfort/agenda/selector-modalidad"
 
 export const metadata: Metadata = {
   title: "Agendar cita · Tonfort",
-  description:
-    "Elige cómo empezar: una cita virtual gratis o una visita presencial a tu domicilio. Después eliges día y hora.",
+    description:
+      "Elige cómo empezar: una cita virtual gratis o una visita presencial a tu domicilio. Las citas duran 1 h 30 m dentro de bloques de 2 h, con 30 min de gabela. Después eliges día y hora.",
   alternates: { canonical: "/agenda/modalidad" },
 }
 
@@ -39,6 +46,15 @@ const ETIQUETA: Record<string, string> = {
 }
 
 export default async function AgendaModalidadPage() {
+  const heads = await headers()
+  const ip = getClientIp({ headers: heads })
+  if (ip) {
+    const supabase = getServiceSupabase()
+    if (supabase && (await tieneCitaRecientePorIP(supabase, ip))) {
+      redirect("/agenda/solicitud-recibida?ya_tienes_cita=1")
+    }
+  }
+
   const modalidades = await getModalidadesActivas()
 
   // Si el catálogo está vacío o no tiene exactamente 2 activas, el formulario

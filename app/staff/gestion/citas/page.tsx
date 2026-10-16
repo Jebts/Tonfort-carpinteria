@@ -47,7 +47,7 @@ export default function GestionCitasPage() {
   const [citaEditando, setCitaEditando] = useState<CitaConCliente | null>(null)
   const [form, setForm] = useState<Partial<Cita> & { fecha_hora: string }>({
     fecha_hora: "",
-    duracion_minutos: 120,
+    duracion_minutos: 90,
     origen: "interna",
     estado: "en_espera",
   })
@@ -125,7 +125,7 @@ export default function GestionCitasPage() {
     const ahora = new Date()
     setForm({
       fecha_hora: format(ahora, "yyyy-MM-dd'T'HH:mm"),
-      duracion_minutos: 120,
+      duracion_minutos: 90,
       origen: "interna",
       estado: "en_espera",
     })
@@ -432,7 +432,7 @@ export default function GestionCitasPage() {
             <div className="space-y-2">
               <Label htmlFor="duracion_minutos">Duración (minutos)</Label>
               <Select
-                value={String(form.duracion_minutos ?? 120)}
+                value={String(form.duracion_minutos ?? 90)}
                 onValueChange={(v) => setForm({ ...form, duracion_minutos: Number(v) })}
               >
                 <SelectTrigger>

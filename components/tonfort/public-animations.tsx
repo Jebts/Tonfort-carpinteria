@@ -291,6 +291,8 @@ export function ButtonLink({
   size = "md",
   className = "",
   ariaLabel,
+  target,
+  rel,
 }: {
   href: string
   children: React.ReactNode
@@ -300,6 +302,8 @@ export function ButtonLink({
   size?: "md" | "lg"
   className?: string
   ariaLabel?: string
+  target?: string
+  rel?: string
 }) {
   const sizeClass = size === "lg" ? "px-8 py-4 text-base" : "px-6 py-3 text-sm"
 
@@ -318,6 +322,8 @@ export function ButtonLink({
   return (
     <Link
       href={href}
+      target={target}
+      rel={rel}
       aria-label={ariaLabel}
       className={`group inline-flex items-center justify-center rounded-full font-medium transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[.98] ${
         primary ? sizeClass : "text-sm"

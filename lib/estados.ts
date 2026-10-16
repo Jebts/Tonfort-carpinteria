@@ -32,7 +32,7 @@ export const ESTADO_ESTILO: Record<EstadoColor, EstiloEstado> = {
     dot: "bg-amber-500",
   },
   aceptada: {
-    label: "Agendada",
+    label: "Confirmadas",
     className: "border-emerald-500 bg-gradient-to-r from-emerald-500/10 to-transparent text-emerald-600 dark:text-emerald-400",
     badge: "bg-emerald-500/15 text-emerald-600 border-emerald-500 dark:text-emerald-400",
     dot: "bg-emerald-500",

@@ -14,37 +14,37 @@ function req(url: string, cookie?: string): NextRequest {
 }
 
 describe("proxy (middleware)", () => {
-  it("/staff/login pasa (next)", () => {
-    const res = proxy(req("http://localhost/staff/login"))
+  it("/staff/login pasa (next)", async () => {
+    const res = await proxy(req("http://localhost/staff/login"))
     expect(res.status).toBe(200)
   })
 
-  it("/api/staff/login pasa (next)", () => {
-    const res = proxy(req("http://localhost/api/staff/login"))
+  it("/api/staff/login pasa (next)", async () => {
+    const res = await proxy(req("http://localhost/api/staff/login"))
     expect(res.status).toBe(200)
   })
 
-  it("/staff/oculto sin cookie → redirect 307 a /staff/login?redirect=", () => {
-    const res = proxy(req("http://localhost/staff/oculto"))
+  it("/staff/oculto sin cookie → redirect 307 a /staff/login?redirect=", async () => {
+    const res = await proxy(req("http://localhost/staff/oculto"))
     expect(res.status).toBe(307)
     const loc = res.headers.get("location") ?? ""
     expect(loc).toContain("/staff/login")
     expect(loc).toContain("redirect=")
   })
 
-  it("/api/staff/x sin cookie → 401", () => {
-    const res = proxy(req("http://localhost/api/staff/x"))
+  it("/api/staff/x sin cookie → 401", async () => {
+    const res = await proxy(req("http://localhost/api/staff/x"))
     expect(res.status).toBe(401)
   })
 
-  it("con cookie válida → next (200)", () => {
+  it("con cookie válida → next (200)", async () => {
     const token = makeToken()
-    const res = proxy(req("http://localhost/staff/oculto", `tonfort_staff=${token}`))
+    const res = await proxy(req("http://localhost/staff/oculto", `tonfort_staff=${token}`))
     expect(res.status).toBe(200)
   })
 
-  it("con cookie alterada → 401 en api", () => {
-    const res = proxy(req("http://localhost/api/staff/x", "tonfort_staff=abc.def"))
+  it("con cookie alterada → 401 en api", async () => {
+    const res = await proxy(req("http://localhost/api/staff/x", "tonfort_staff=abc.def"))
     expect(res.status).toBe(401)
   })
 })

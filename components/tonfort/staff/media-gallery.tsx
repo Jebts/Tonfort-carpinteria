@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useDropzone } from "react-dropzone"
 import { Plus, Image as ImageIcon, Video, X, GripVertical, Eye, EyeOff, Trash2, LayoutDashboard, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -45,6 +45,27 @@ export function MediaGallery({
   const visores = proyecto.visores ?? []
   const fileInputGaleriaRef = useRef<HTMLInputElement>(null)
   const fileInputPortadaRef = useRef<HTMLInputElement>(null)
+  const mouseYRef = useRef(0)
+  const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Auto-scroll de la página mientras se arrastra una imagen cerca del borde.
+  useEffect(() => {
+    const onWindowDragOver = (e: DragEvent) => {
+      mouseYRef.current = e.clientY
+    }
+    const pararScroll = () => {
+      if (scrollIntervalRef.current) {
+        clearInterval(scrollIntervalRef.current)
+        scrollIntervalRef.current = null
+      }
+    }
+    window.addEventListener("dragover", onWindowDragOver)
+    window.addEventListener("dragend", pararScroll)
+    return () => {
+      window.removeEventListener("dragover", onWindowDragOver)
+      window.removeEventListener("dragend", pararScroll)
+    }
+  }, [])
 
   // Lightbox
   const [lightbox, setLightbox] = useState<{ src: string; alt: string | null; titulo: string | null } | null>(null)
@@ -84,6 +105,13 @@ export function MediaGallery({
       items: [{ tipo: "foto", id: fotoId, preview, titulo }],
       origenProyectoId: proyecto.id,
     })
+    // Auto-scroll si el cursor está cerca del borde superior/inferior.
+    scrollIntervalRef.current = setInterval(() => {
+      const y = mouseYRef.current
+      const innerHeight = window.innerHeight
+      if (y < 90) window.scrollBy(0, -24)
+      else if (y > innerHeight - 90) window.scrollBy(0, 24)
+    }, 40)
   }
 
   const soltarSobreFoto = (e: React.DragEvent, fotoDestinoId: string) => {
@@ -271,6 +299,10 @@ export function MediaGallery({
                 setFotoArrastrada(null)
                 setFotoSobre(null)
                 onDragEndMedia()
+                if (scrollIntervalRef.current) {
+                  clearInterval(scrollIntervalRef.current)
+                  scrollIntervalRef.current = null
+                }
               }}
               onDragOver={(e) => {
                 if (!fotoArrastrada) return

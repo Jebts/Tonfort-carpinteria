@@ -52,7 +52,7 @@ CREATE UNIQUE INDEX modalidades_cita_slug_unq
 INSERT INTO modalidades_cita (nombre, slug, descripcion, costo, duracion_minutos, activo, orden)
 VALUES
   ('Virtual',    'virtual',    'Videollamada con tu diseñador. Sin costo.',     0,  90, true, 0),
-  ('Presencial', 'presencial', 'Visita a tu domicilio y toma de medidas.',   70000, 120, true, 1)
+  ('Presencial', 'presencial', 'Visita a tu domicilio y toma de medidas.',   70000, 90, true, 1)
 ON CONFLICT DO NOTHING;
 
 -- Normaliza los valores sin importar qué fila haya sobrevivido al backfill.
@@ -64,7 +64,7 @@ UPDATE modalidades_cita SET
 
 UPDATE modalidades_cita SET
   nombre = 'Presencial', descripcion = 'Visita a tu domicilio y toma de medidas.',
-  costo = 70000, duracion_minutos = 120, activo = true, orden = 1
+  costo = 70000, duracion_minutos = 90, activo = true, orden = 1
  WHERE slug = 'presencial';
 
 -- Cualquier modalidad fuera del catálogo queda inactiva. Sin esto,

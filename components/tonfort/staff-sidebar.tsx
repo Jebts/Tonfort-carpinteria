@@ -76,11 +76,15 @@ export function StaffSidebar({
   onItemClick,
   rol,
   collapsedMobile = false,
+  collapsed = false,
+  onCollapseToggle,
 }: {
   className?: string
   onItemClick?: () => void
   rol?: RolStaff
   collapsedMobile?: boolean
+  collapsed?: boolean
+  onCollapseToggle?: () => void
 }) {
   const pathname = usePathname()
   const visibleSections = rol
@@ -94,6 +98,14 @@ export function StaffSidebar({
     location.href = "/staff/login"
   }
 
+  const handleBrandClick = () => {
+    if (onCollapseToggle) onCollapseToggle()
+  }
+
+  const handleBrandKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && onCollapseToggle) onCollapseToggle()
+  }
+
   const itemClase = (active: boolean) =>
     cn(
       "press flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
@@ -103,14 +115,24 @@ export function StaffSidebar({
     )
 
   return (
-    <nav className={cn("flex flex-col gap-1", className)} aria-label="Navegación staff">
+    <nav
+      className={cn(
+        "flex flex-col gap-1 transition-all duration-300 ease-in-out",
+        collapsed ? "w-16" : "w-56",
+        className,
+      )}
+      aria-label="Navegación staff"
+    >
       <motion.div variants={itemVariants}>
-        <Link
-          href="/staff"
-          className="px-3 py-2 font-sans text-xs font-medium uppercase tracking-widest text-muted-foreground"
+        <div
+          onClick={handleBrandClick}
+          onKeyDown={handleBrandKeyDown}
+          role="button"
+          tabIndex={0}
+          className="cursor-pointer px-3 py-2 font-sans text-xs font-medium uppercase tracking-widest text-muted-foreground"
         >
           tonfort
-        </Link>
+        </div>
       </motion.div>
       <div className="flex-1">
         {visibleSections.map((section) => {
@@ -120,25 +142,27 @@ export function StaffSidebar({
           const isFirst = visibleSections.indexOf(section) === 0
           return (
             <motion.div key={section.label} variants={itemVariants}>
-              <button
-                type="button"
-                onClick={() => {
-                  if (openSection === section.label) setOpenSection(null)
-                  else setOpenSection(section.label)
-                }}
-                className={cn(
-                  "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-medium uppercase tracking-widest text-muted-foreground hover:bg-muted",
-                  isActiveSection && "bg-muted font-semibold text-foreground",
-                )}
-              >
-                <span>{section.label}</span>
-                <ChevronDown
+              {!collapsed && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (openSection === section.label) setOpenSection(null)
+                    else setOpenSection(section.label)
+                  }}
                   className={cn(
-                    "h-4 w-4 transition-transform",
-                    openSection === section.label ? "rotate-180" : "",
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-medium uppercase tracking-widest text-muted-foreground hover:bg-muted",
+                    isActiveSection && "bg-muted font-semibold text-foreground",
                   )}
-                />
-              </button>
+                >
+                  <span>{section.label}</span>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 transition-transform",
+                      openSection === section.label ? "rotate-180" : "",
+                    )}
+                  />
+                </button>
+              )}
               {(openSection === section.label || (isFirst && openSection === null)) &&
                 section.items.map((item) => {
                   const active =
@@ -149,10 +173,16 @@ export function StaffSidebar({
                       <Link
                         href={item.href}
                         onClick={onItemClick}
-                        className={itemClase(active)}
+                        className={cn(
+                          "press flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
+                          collapsed ? "justify-center px-1" : "",
+                          active
+                            ? "bg-primary text-primary-foreground"
+                            : "text-foreground hover:bg-muted",
+                        )}
                       >
                         <Icon className="h-4 w-4" />
-                        {item.label}
+                        {!collapsed && item.label}
                       </Link>
                     </motion.div>
                   )
@@ -161,19 +191,23 @@ export function StaffSidebar({
           )
         })}
       </div>
-      <motion.div variants={itemVariants}>
-        <button
-          type="button"
-          onClick={logout}
-          className="press flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <LogOut className="h-4 w-4" />
-          Salir
-        </button>
-      </motion.div>
-      <motion.div variants={itemVariants} className="flex justify-center">
-        <ThemeToggle />
-      </motion.div>
+      {!collapsed && (
+        <motion.div variants={itemVariants}>
+          <button
+            type="button"
+            onClick={logout}
+            className="press flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <LogOut className="h-4 w-4" />
+            Salir
+          </button>
+        </motion.div>
+      )}
+      {!collapsed && (
+        <motion.div variants={itemVariants} className="flex justify-center">
+          <ThemeToggle />
+        </motion.div>
+      )}
     </nav>
   )
 }

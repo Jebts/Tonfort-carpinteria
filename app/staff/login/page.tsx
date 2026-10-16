@@ -83,45 +83,6 @@ function LoginForm() {
           {cargando ? "Entrando…" : "Entrar"}
         </Button>
       </form>
-
-      <div className="mt-6 rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground space-y-2">
-        <p className="font-semibold text-foreground">Cuentas de acceso rápido:</p>
-        <div className="grid grid-cols-3 gap-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              setUsuario("admin")
-              setPassword("TonfortAdmin2026!")
-            }}
-            className="rounded border border-border bg-background p-1.5 text-center transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
-            <div className="font-medium text-foreground">Admin</div>
-            <div className="text-[10px] text-muted-foreground">admin</div>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setUsuario("disenador")
-              setPassword("disenador12345")
-            }}
-            className="rounded border border-border bg-background p-1.5 text-center transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
-            <div className="font-medium text-foreground">Diseñador</div>
-            <div className="text-[10px] text-muted-foreground">disenador</div>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setUsuario("asesor")
-              setPassword("asesor12345")
-            }}
-            className="rounded border border-border bg-background p-1.5 text-center transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
-            <div className="font-medium text-foreground">Asesor</div>
-            <div className="text-[10px] text-muted-foreground">asesor</div>
-          </button>
-        </div>
-      </div>
     </div>
   )
 }

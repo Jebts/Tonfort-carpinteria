@@ -129,7 +129,7 @@ La agenda pública ofrece exactamente **2 modalidades**, y son las filas de
 | slug | Modalidad | `costo` | `duracion_minutos` | Qué incluye |
 |---|---|---|---|---|
 | `virtual` | Virtual | 0 | 90 | Videollamada en vivo, prueba de iluminación en tiempo real, estimación de costos |
-| `presencial` | Presencial | 70000 | 120 | Visita a tu domicilio, toma de medidas, diagnóstico del espacio |
+| `presencial` | Presencial | 70000 | 90 | Visita a tu domicilio, toma de medidas, diagnóstico del espacio |
 
 Reglas del catálogo:
 
@@ -164,8 +164,10 @@ El slot se ocupa **por modalidad**, no en bloque:
 - `GET /api/citas` acepta `?modalidad=<slug|id>`. Sin el parámetro devuelve la disponibilidad
   agregada; con él devuelve la de esa modalidad. En ambos casos nunca expone citas `canceladas`
   ni datos de contacto.
-- `virtual` dura 90 minutos y `presencial` 120: la rejilla de bloques se calcula con la duración
-  de la modalidad elegida, no con la de 120 por defecto.
+- `virtual` y `presencial` duran 90 minutos: la rejilla de bloques se calcula con la duración
+  de la modalidad elegida, no con la de 120 por defecto. Cada bloque de la retícula sigue siendo
+  de 2 h; los 30 min que sobran tras una cita de 1 h 30 m son la gabela (tolerancia/gracia)
+  entre citas.
 - `/agenda/horario` sin un `?modalidad=` que resuelga contra el catálogo responde **404**. No es
   un calendario vacío: es un error de navegación.
 

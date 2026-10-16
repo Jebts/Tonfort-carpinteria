@@ -13,6 +13,7 @@ export type RolStaff = "admin" | "asesor" | "disenador"
 
 export interface Sesion {
   id: string
+  session_id?: string
   usuario: string
   nombre: string
   rol: RolStaff
@@ -96,7 +97,7 @@ export function verificarToken(token?: string | null): { ok: boolean; sesion?: S
     const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"))
     if (!data.exp || data.exp < Date.now()) return { ok: false }
     if (data.id == null || !data.usuario || !data.nombre || !data.rol) return { ok: false }
-    return { ok: true, sesion: { id: data.id, usuario: data.usuario, nombre: data.nombre, rol: data.rol as RolStaff } }
+    return { ok: true, sesion: { id: data.id, session_id: data.session_id, usuario: data.usuario, nombre: data.nombre, rol: data.rol as RolStaff } }
   } catch {
     return { ok: false }
   }

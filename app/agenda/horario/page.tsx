@@ -1,14 +1,21 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { headers } from "next/headers"
+import { notFound, redirect } from "next/navigation"
 import { WHATSAPP_URL } from "@/lib/contact"
-import { calcularDisponibilidad, getModalidadPorSlug } from "@/lib/citas-service"
+import { getClientIp } from "@/lib/rate-limit"
+import { getServiceSupabase } from "@/lib/supabase/server"
+import {
+  calcularDisponibilidad,
+  getModalidadPorSlug,
+  tieneCitaRecientePorIP,
+} from "@/lib/citas-service"
 import { AgendaHorario } from "@/components/tonfort/agenda/agenda-horario"
 import type { BloqueSemana } from "@/components/tonfort/agenda/calendario"
 
 export const metadata: Metadata = {
   title: "Elige tu horario · Tonfort",
-  description: "Elige el día y la hora de tu cita de diseño.",
+  description: "Elige el día y la hora de tu cita de diseño (1 h 30 m dentro de bloques de 2 h, con 30 min de gabela).",
   robots: { index: false },
 }
 
@@ -19,6 +26,15 @@ export default async function AgendaHorarioPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
+  const heads = await headers()
+  const ip = getClientIp({ headers: heads })
+  if (ip) {
+    const supabase = getServiceSupabase()
+    if (supabase && (await tieneCitaRecientePorIP(supabase, ip))) {
+      redirect("/agenda/solicitud-recibida?ya_tienes_cita=1")
+    }
+  }
+
   const query = await searchParams
   const rawModalidad = Array.isArray(query.modalidad) ? query.modalidad[0] : query.modalidad
   const modalidad = rawModalidad ? await getModalidadPorSlug(rawModalidad) : null

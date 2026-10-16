@@ -15,6 +15,7 @@ vi.mock("@/lib/citas-service", () => ({
   crearCitaWeb: vi.fn(),
   getCitasTableName: vi.fn().mockResolvedValue("citas"),
   getModalidadPorSlug: vi.fn(),
+  tieneCitaRecientePorIP: vi.fn(),
   validarSlotLibre: vi.fn(),
 }))
 
@@ -25,6 +26,7 @@ import {
   crearCitaWeb,
   getCitasTableName,
   getModalidadPorSlug,
+  tieneCitaRecientePorIP,
   validarSlotLibre,
 } from "@/lib/citas-service"
 import { makeSupabase } from "./helpers/supabase"
@@ -83,6 +85,8 @@ beforeEach(() => {
   vi.mocked(validarSlotLibre).mockResolvedValue({ ok: true })
   vi.mocked(getModalidadPorSlug).mockReset()
   vi.mocked(getModalidadPorSlug).mockResolvedValue(modalidad())
+  vi.mocked(tieneCitaRecientePorIP).mockReset()
+  vi.mocked(tieneCitaRecientePorIP).mockResolvedValue(false)
 })
 
 afterEach(() => {
@@ -149,16 +153,25 @@ describe("POST /api/citas", () => {
     expect(res.status).toBe(422)
   })
 
-  it("409 si la misma IP ya tiene una cita en el bloque", async () => {
+  it("409 si la IP ya tiene una cita no cancelada en las últimas 24 h", async () => {
     h.ip = "1.2.3.4"
+    vi.mocked(tieneCitaRecientePorIP).mockResolvedValue(true)
     vi.mocked(getServiceSupabase).mockReturnValue(
       makeSupabase({ citas: [{ data: [{ id: "old" }], error: null }] }) as never,
     )
     const res = await postCita(bodyCita())
-    // 409 (conflicto), no 429: el límite de tasa es otro y tiene su propio código.
+    // Límite diario por IP: 409, no 429.
     expect(res.status).toBe(409)
     const data = await res.json()
-    expect(data.error).toContain("este bloque")
+    expect(data.error).toContain("24 horas")
+  })
+
+  it("201 crea con IP cuando no hay cita previa en 24 h", async () => {
+    h.ip = "1.2.3.4"
+    vi.mocked(getServiceSupabase).mockReturnValue(makeSupabase({}) as never)
+    vi.mocked(crearCitaWeb).mockResolvedValue({ ok: true, cita: { id: "c1" } as never })
+    const res = await postCita(bodyCita())
+    expect(res.status).toBe(201)
   })
 
   it("sin IP conocida no se agrupa a los visitantes por `ip IS NULL`", async () => {

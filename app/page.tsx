@@ -7,6 +7,7 @@ import { Luz } from "@/components/tonfort/landing/luz"
 import { Nosotros } from "@/components/tonfort/landing/nosotros"
 import { ProyectosRecientes } from "@/components/tonfort/landing/proyectos-recientes"
 import { Equipo } from "@/components/tonfort/landing/equipo"
+import { ContactoCta } from "@/components/tonfort/landing/contacto-cta"
 import { AgendaCta } from "@/components/tonfort/landing/agenda-cta"
 
 // Los visores se leen una vez y se recorren en un único carrusel. Sin visores
@@ -33,6 +34,8 @@ export default async function HomePage() {
       <ProyectosRecientes />
 
       <Equipo />
+
+      <ContactoCta />
 
       <AgendaCta />
 

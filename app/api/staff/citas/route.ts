@@ -4,6 +4,7 @@ import { requireStaff } from "@/lib/staff-auth"
 import { calcularDisponibilidad, validarSlotLibre, getCitasTableName, getModalidadesActivas } from "@/lib/citas-service"
 import { citaStaffSchema } from "@/lib/validators"
 import { addDays } from "date-fns"
+import { DURACION_MINUTOS } from "@/lib/agenda"
 import type { Cita } from "@/lib/supabase/types"
 import { sanitizeError } from "@/lib/errors"
 
@@ -129,7 +130,7 @@ export async function POST(req: NextRequest) {
       telefono: d.telefono ?? null,
       descripcion: d.descripcion ?? null,
       fecha_hora: new Date(d.fecha_hora).toISOString(),
-      duracion_minutos: d.duracion_minutos ?? 120,
+      duracion_minutos: d.duracion_minutos ?? DURACION_MINUTOS,
       estado: d.estado ?? "en_espera",
       origen: d.origen ?? "interna",
       meet_link: d.meet_link ?? null,

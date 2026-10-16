@@ -69,9 +69,9 @@ export const EQUIPO = {
       foto: "/equipo/santiago.jpg",
     },
     {
-      nombre: "Natalia Bustos",
+      nombre: "Yecenia Tamayo",
       rol: "Asesora",
-      foto: "/equipo/natalia.jpg",
+      foto: "/equipo/yecenia.jpg",
     },
     {
       nombre: "Esteban Bustos",
@@ -87,4 +87,11 @@ export const AGENDA_CTA = {
   bajada: "Una primera conversación, sin costo y sin compromiso.",
   cta: "Agendar cita",
   nota: "Virtual gratis o visita a domicilio.",
+} as const
+
+export const CONTACTO_CTA = {
+  eyebrow: "Contacto directo",
+  titulo: "Escríbenos por WhatsApp",
+  bajada: "Resolvemos dudas de materiales, plazos y medidas antes de empezar tu proyecto.",
+  cta: "Escribir por WhatsApp",
 } as const

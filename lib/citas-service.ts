@@ -75,7 +75,7 @@ export async function calcularDisponibilidad(
   opts: OpcionesDisponibilidad = {},
 ): Promise<DisponibilidadSlot[]> {
   const supabase = getServiceSupabase()
-  const duracion = 120
+  const duracion = DURACION_MINUTOS
 
   const slots = generarSlots(desde, hasta)
   const mapa = new Map<string, DisponibilidadSlot>()
@@ -354,7 +354,7 @@ export async function crearCitaWeb(input: CrearCitaWebInput): Promise<{ ok: bool
   if (!supabase) return { ok: false, error: BACKEND_NO_CONFIGURADO }
 
   // La duración real de la modalidad decide la ventana ocupada: 90 min para
-  // virtual, 120 para presencial (ver `validarSlotLibre`).
+  // virtual y presencial (ver `validarSlotLibre`).
   const validacion = await validarSlotLibre(
     supabase,
     input.fecha_hora,
@@ -378,7 +378,7 @@ export async function crearCitaWeb(input: CrearCitaWebInput): Promise<{ ok: bool
       telefono: input.telefono,
       descripcion: input.descripcion ?? null,
       fecha_hora: new Date(input.fecha_hora).toISOString(),
-      duracion_minutos: input.duracion_minutos ?? 120,
+      duracion_minutos: input.duracion_minutos ?? DURACION_MINUTOS,
       estado: "en_espera",
       origen: "web",
       modalidad_id: input.modalidad_id,
@@ -393,6 +393,27 @@ export async function crearCitaWeb(input: CrearCitaWebInput): Promise<{ ok: bool
   return { ok: true, cita: data as Cita }
 }
 
+// Una IP (dispositivo) solo puede crear una cita cada 24 horas. Se cuenta
+// cualquier cita no cancelada de esa IP creada en la ventana de 24 h, sin
+// importar modalidad ni bloque: es el cupo público del dispositivo.
+export async function tieneCitaRecientePorIP(
+  supabase: SupabaseClient,
+  ip: string,
+): Promise<boolean> {
+  const tableName = await getCitasTableName(supabase)
+  const desde = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const { data, error } = await supabase
+    .from(tableName)
+    .select("id")
+    .eq("ip", ip)
+    .neq("estado", "cancelada")
+    .gte("creado_en", desde.toISOString())
+    .limit(1)
+
+  if (error) return false
+  return Boolean(data && data.length > 0)
+}
+
 export async function validarSlotLibre(
   supabase: SupabaseClient,
   fechaHora: string,
@@ -405,9 +426,9 @@ export async function validarSlotLibre(
     return { ok: false, error: "Fecha no válida" }
   }
 
-  // La ventana es la duración real del servicio (90 min virtual, 120 min
-  // presencial), no 2 h fijas: con 2 h una virtual de 08:00 a 09:30 tapona
-  // huecos que legalmente quedan libres. Los intervalos son semiabiertos
+  // La ventana es la duración real del servicio (90 min para cualquier
+  // modalidad), no 2 h fijas: con 2 h una cita de 08:00 a 09:30 tapona huecos
+  // que legalmente quedan libres. Los intervalos son semiabiertos
   // ([inicio, fin)): los bloques son contiguos por diseño, así que una cita
   // que termina a las 10:00 no estorba a la que empieza a las 10:00.
   const duracion = duracionMinutos && duracionMinutos > 0 ? duracionMinutos : DURACION_MINUTOS
@@ -495,9 +516,9 @@ export type ResultadoConfirmacion =
 // mueve (y a qué bloque) o se elimina. Solo entonces la elegida pasa a
 // `aceptada`.
 //
-// "Mismo bloque" = misma `fecha_hora` de inicio (`slotKey`) Y misma modalidad:
-// una presencial no se mueve porque se confirme una virtual (servicios
-// distintos, 120 vs 90 min).
+  // "Mismo bloque" = misma `fecha_hora` de inicio (`slotKey`) Y misma modalidad:
+  // una presencial no se mueve porque se confirme una virtual (servicios
+  // distintos, misma duración).
 //
 // Sin transacción real (supabase-js no hace multi-statement): las escrituras
 // son secuenciales y reintentables por id, y el UPDATE de la elegida va el

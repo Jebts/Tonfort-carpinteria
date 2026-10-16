@@ -25,10 +25,12 @@ export function createRateLimiter(opts: RateLimitOptions) {
   }
 }
 
+type HeadersLike = { get: (name: string) => string | null }
+
 // IP del visitante. `x-forwarded-for` lo escribe el cliente *y* lo amplía cada
 // proxy, así que se toma el ÚLTIMO valor (el que añade nuestro proxy), no el
 // primero: si no, cualquiera podría elegir con qué IP se le cuenta el cupo.
-export function getClientIp(req: { headers: Headers }): string | null {
+export function getClientIp(req: { headers: HeadersLike }): string | null {
   const xf = req.headers.get("x-forwarded-for")
   if (xf) {
     const last = xf.split(",").at(-1)?.trim()

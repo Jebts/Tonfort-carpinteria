@@ -20,25 +20,7 @@ export async function validarCredencialesDB(identificador: string, password: str
   if (error || !data) return null
 
   const usuario = data as UsuarioDB
-  let ok = await verifyPassword(password, usuario.password_hash)
-
-  // Fallback para admin si se usa INITIAL_ADMIN_PASSWORD de .env o el seed default admin12345
-  if (!ok && usuario.rol === "admin") {
-    const envPass = process.env.INITIAL_ADMIN_PASSWORD
-    if ((envPass && password === envPass) || password === "admin12345") {
-      ok = true
-      try {
-        const { hashPasswordForEnv } = await import("@/lib/auth-core")
-        const newHash = await hashPasswordForEnv(password)
-        await supabase
-          .from("usuarios")
-          .update({ password_hash: newHash })
-          .eq("id", usuario.id)
-      } catch (err) {
-        console.error("[validarCredencialesDB] Error actualizando hash admin:", err)
-      }
-    }
-  }
+  const ok = await verifyPassword(password, usuario.password_hash)
 
   if (!ok) return null
 

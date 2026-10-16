@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 const RESUMEN_VIDEO = [
   "Una cita virtual es una videollamada con tu diseñador: sin costo y desde donde estés.",
   "Una visita presencial va a tu domicilio, con toma de medidas y diagnóstico del espacio.",
+  "Las citas duran 1 h 30 m dentro de bloques de 2 h, con 30 min de gabela entre una y otra.",
   "En ambos casos el siguiente paso es el mismo: elegir día y hora.",
 ]
 

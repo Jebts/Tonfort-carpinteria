@@ -625,7 +625,7 @@ async function seed() {
   // mismos precios/duraciones) que siembra `20260924000000_espacio_publico.sql`.
   const modalidadesCita = [
     { id: uuid(), nombre: 'Virtual', slug: 'virtual', descripcion: 'Videollamada con tu diseñador. Sin costo.', costo: 0, duracion_minutos: 90, activo: true, orden: 0, created_at: now, updated_at: now },
-    { id: uuid(), nombre: 'Presencial', slug: 'presencial', descripcion: 'Visita a tu domicilio y toma de medidas.', costo: 70000, duracion_minutos: 120, activo: true, orden: 1, created_at: now, updated_at: now },
+    { id: uuid(), nombre: 'Presencial', slug: 'presencial', descripcion: 'Visita a tu domicilio y toma de medidas.', costo: 70000, duracion_minutos: 90, activo: true, orden: 1, created_at: now, updated_at: now },
   ]
 
   const { error: modalidadesError } = await supabase.from('modalidades_cita').insert(modalidadesCita)
@@ -675,7 +675,7 @@ async function seed() {
       telefono: cliente.telefono,
       descripcion: randomPick(descripciones),
       fecha_hora: fecha.toISOString(),
-      duracion_minutos: 120,
+      duracion_minutos: 90,
       estado,
       origen,
       movida: false,

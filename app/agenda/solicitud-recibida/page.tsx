@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { Check } from "lucide-react"
+import { WHATSAPP_URL } from "@/lib/contact"
 import { getModalidadPorSlug } from "@/lib/citas-service"
 import { formatPrecio, formatearFechaLarga } from "@/lib/agenda-format"
 
@@ -28,6 +29,8 @@ export default async function AgendaSolicitudRecibidaPage({
   const slugModalidad = primero(query.modalidad)
   const modalidad = slugModalidad ? await getModalidadPorSlug(slugModalidad) : null
 
+  const yaTienesCita = primero(query.ya_tienes_cita) === "1"
+
   const fechaIso = primero(query.fecha)
   const fecha = fechaIso ? new Date(fechaIso) : null
   const fechaValida = fecha && !Number.isNaN(fecha.getTime()) ? fecha : null
@@ -50,6 +53,25 @@ export default async function AgendaSolicitudRecibidaPage({
       <p className="mx-auto mt-5 max-w-md text-base leading-7 text-[#0B1D3A]/70">
         Revisamos tu solicitud y te escribimos por WhatsApp.
       </p>
+
+      <p className="mx-auto mt-6 max-w-md text-sm leading-7 text-[#0B1D3A]/70">
+        {yaTienesCita
+          ? "Ya tienes una cita agendada hoy. Te escribiremos por WhatsApp para confirmar los detalles. Puedes agendar de nuevo mañana: una cita por dispositivo cada 24 horas."
+          : "Una cita por dispositivo cada 24 horas. Si ya agendaste hoy, puedes hacerla de nuevo mañana."}
+      </p>
+
+      <div className="mx-auto mt-10 max-w-md rounded-2xl border border-border bg-[#0B1D3A] px-6 py-4 text-left">
+        <p className="text-xs uppercase tracking-[0.2em] text-[#2856c7]">Contacto</p>
+        <p className="mt-1 text-sm text-white">Escríbenos directamente por WhatsApp:</p>
+        <a
+          href={WHATSAPP_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/[.08] px-5 py-2 text-sm font-medium text-white transition hover:bg-white/[.16]"
+        >
+          WhatsApp
+        </a>
+      </div>
 
       {mostrarResumen && (
         <dl className="mx-auto mt-10 max-w-md rounded-2xl border border-border bg-white px-6 py-2 text-left">

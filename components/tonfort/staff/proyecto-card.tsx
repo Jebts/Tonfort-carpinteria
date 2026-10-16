@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { ChevronDown, GripVertical, Loader2, Undo2, Video, Trash2 } from "lucide-react"
+import { ChevronDown, GripVertical, Image, Loader2, Undo2, Video, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -219,9 +219,10 @@ export function ProyectoCard({
       onDrop={handleDrop}
     >
       {/* Cabecera: siempre visible. Click en cualquier punto alterna
-          despliegue; el input y los botones quedan fuera con stopPropagation. */}
+          despliegue; el input y los botones quedan fuera con stopPropagation.
+          La miniatura de la portada se muestra a la izquierda. */}
       <div
-        className="flex cursor-pointer items-center gap-3 border-b border-border bg-muted/30 p-4 transition-colors hover:bg-muted/50"
+        className="flex cursor-pointer items-center gap-2 border-b border-border bg-muted/30 p-3 transition-colors hover:bg-muted/50"
         onClick={() => {
           const siguiente = !expandido
           setExpandido(siguiente)
@@ -239,6 +240,20 @@ export function ProyectoCard({
         >
           <GripVertical className="h-5 w-5" />
         </button>
+
+        {/* Miniatura de portada */}
+        {proyecto.portada_url ? (
+          <img
+            src={proyecto.portada_url}
+            alt={`Portada de ${proyecto.titulo}`}
+            className="h-10 w-14 object-cover rounded border border-border flex-shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <div className="h-10 w-14 rounded border border-border bg-muted/50 flex items-center justify-center text-[10px] text-muted-foreground flex-shrink-0">
+            <Image className="h-4 w-4" />
+          </div>
+        )}
 
         <span className="w-6 text-right font-mono text-xs text-muted-foreground">{index + 1}</span>
 
@@ -278,14 +293,18 @@ export function ProyectoCard({
             variant="ghost"
             className="h-8 w-8 text-destructive hover:text-destructive"
             title="Eliminar proyecto"
-            onClick={() => setConfirmarEliminar(true)}
+            onClick={(e) => {
+              e.stopPropagation()
+              setConfirmarEliminar(true)
+            }}
           >
             <Trash2 className="h-4 w-4" />
           </Button>
 
           <button
             type="button"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation()
               const siguiente = !expandido
               setExpandido(siguiente)
               onExpandChange?.(siguiente)

@@ -30,46 +30,27 @@ interface CitaConCliente extends Cita {
   cliente_nombre?: string
 }
 
-// Formulario de crear/editar. La fecha y la hora se guardan como las escribe el
-// staff sobre la retícula (`yyyy-MM-dd` + `HH:mm` en UTC) y se convierten a ISO
-// solo al enviar: la BD guarda todo en UTC.
+// Formulario de crear/editar (simplificado: solo nombre, teléfono y descripción).
+// El resto de campos se defaultan al guardar.
 interface FormCita {
   id?: string
-  cliente_id: string
   nombre_solicitante: string
-  email: string
   telefono: string
+  descripcion: string
   fecha: string
   hora: string
-  duracion_minutos: number
-  origen: "web" | "interna"
-  estado: EstadoCita
-  descripcion: string
-  meet_link: string
-  notas: string
-  direccion: string
-  modalidad_id: string
 }
 
 function formVacio(fecha: Date, hora?: string): FormCita {
   return {
-    cliente_id: "",
     nombre_solicitante: "",
-    email: "",
     telefono: "",
+    descripcion: "",
     fecha: fecha.toISOString().slice(0, 10),
     // Sin hora explícita (botón global), el primer bloque que quede por delante.
     hora:
       hora ??
       (BLOQUES.find((b) => Number(b.inicio.slice(0, 2)) > fecha.getUTCHours())?.inicio ?? "08:00"),
-    duracion_minutos: 120,
-    origen: "interna",
-    estado: "en_espera",
-    descripcion: "",
-    meet_link: "",
-    notas: "",
-    direccion: "",
-    modalidad_id: "",
   }
 }
 
@@ -95,6 +76,23 @@ function sumarDias(fecha: Date, dias: number): Date {
   return new Date(
     Date.UTC(fecha.getUTCFullYear(), fecha.getUTCMonth(), fecha.getUTCDate() + dias),
   )
+}
+
+// Máscara `+57 (___) ___-____`. Al teclear solo se aceptan dígitos, y el
+// prefijo 57 no se vuelve a duplicar si ya viene pegado.
+function maskTelefono(valor: string): string {
+  const bruto = valor.replace(/\D/g, "")
+  const local = bruto.startsWith("57") ? bruto.slice(2) : bruto
+  const digitos = local.slice(0, 10)
+
+  const a = digitos.slice(0, 3)
+  const b = digitos.slice(3, 6)
+  const c = digitos.slice(6, 10)
+
+  let out = `+57 (${a}`
+  if (digitos.length > 3) out += `) ${b}`
+  if (digitos.length > 6) out += `-${c}`
+  return out
 }
 
 export default function GestionAgendaPage() {
@@ -214,15 +212,23 @@ export default function GestionAgendaPage() {
         hayAceptada: boolean
         /** pendientes agrupados por modalidad: el color del círculo lo dice. */
         porTipo: { slug: string | null; cantidad: number }[]
+        /** confirmadas agrupadas por modalidad: el color del círculo lo dice. */
+        porTipoAceptada: { slug: string | null; cantidad: number }[]
       }
     >()
     for (const [clave, datos] of datosPorClave) {
       const activas = datos.citas.filter((c) => c.estado !== "cancelada")
       const pendientes = datos.citas.filter((c) => c.estado === "en_espera")
+      const aceptadas = datos.citas.filter((c) => c.estado === "aceptada")
       const tipos = new Map<string | null, number>()
       for (const c of pendientes) {
         const slug = c.modalidad_id ? modalidadPorId.get(c.modalidad_id)?.slug ?? null : null
         tipos.set(slug, (tipos.get(slug) ?? 0) + 1)
+      }
+      const tiposAceptada = new Map<string | null, number>()
+      for (const c of aceptadas) {
+        const slug = c.modalidad_id ? modalidadPorId.get(c.modalidad_id)?.slug ?? null : null
+        tiposAceptada.set(slug, (tiposAceptada.get(slug) ?? 0) + 1)
       }
       resumen.set(clave, {
         // Contadores del servidor (por modalidad cuando la vista la tiene); el
@@ -231,6 +237,9 @@ export default function GestionAgendaPage() {
         canceladas: datos.canceladas ?? datos.citas.length - activas.length,
         hayAceptada: activas.some((c) => c.estado === "aceptada"),
         porTipo: [...tipos.entries()].map(([slug, cantidad]) => ({ slug, cantidad })),
+        porTipoAceptada: [
+          ...tiposAceptada.entries(),
+        ].map(([slug, cantidad]) => ({ slug, cantidad })),
       })
     }
     return resumen
@@ -297,20 +306,11 @@ export default function GestionAgendaPage() {
   const abrirFormEditar = (cita: CitaConCliente) => {
     setForm({
       id: cita.id,
-      cliente_id: cita.cliente_id ?? "",
       nombre_solicitante: cita.nombre_solicitante ?? "",
-      email: cita.email ?? "",
       telefono: cita.telefono ?? "",
+      descripcion: cita.descripcion ?? "",
       fecha: fechaInput(cita.fecha_hora),
       hora: horaInput(cita.fecha_hora),
-      duracion_minutos: cita.duracion_minutos,
-      origen: cita.origen,
-      estado: cita.estado,
-      descripcion: cita.descripcion ?? "",
-      meet_link: cita.meet_link ?? "",
-      notas: cita.notas ?? "",
-      direccion: cita.direccion ?? "",
-      modalidad_id: cita.modalidad_id ?? "",
     })
   }
 
@@ -323,22 +323,14 @@ export default function GestionAgendaPage() {
       return
     }
     const body: Partial<Cita> & { id?: string } = {
-      cliente_id: form.cliente_id || null,
       nombre_solicitante: form.nombre_solicitante || null,
-      email: form.email || null,
       telefono: form.telefono || null,
       fecha_hora,
-      duracion_minutos: form.duracion_minutos,
-      origen: form.origen,
-      meet_link: form.meet_link || null,
-      notas: form.notas || null,
-      direccion: form.direccion || null,
-      modalidad_id: form.modalidad_id || null,
       descripcion: form.descripcion || null,
     }
     try {
       if (form.id) {
-        await guardarCita({ ...body, id: form.id, estado: form.estado })
+        await guardarCita({ ...body, id: form.id })
         toast.success("Cita actualizada")
       } else {
         // Toda `aceptada` pasa por la confirmación del bloque: crear en espera.
@@ -378,10 +370,6 @@ export default function GestionAgendaPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button onClick={abrirFormGlobal} className="press">
-            <Plus className="mr-2 h-4 w-4" />
-            Nueva cita
-          </Button>
         </div>
       </div>
 
@@ -414,6 +402,7 @@ export default function GestionAgendaPage() {
           // verde presencial, morado interna) y el número, cuántas hay en
           // espera. El círculo gris cuenta las canceladas.
           const tipos = resumen?.porTipo ?? []
+          const tiposAceptada = resumen?.porTipoAceptada ?? []
 
           return (
             <div
@@ -425,6 +414,7 @@ export default function GestionAgendaPage() {
                 ...tipos.map((t) => `${t.cantidad} ${colorTipoCita(t.slug).nombre}`),
                 `${enEspera} en espera`,
                 `${canceladas} canceladas`,
+                ...tiposAceptada.map((t) => `${t.cantidad} ${colorTipoCita(t.slug).nombre} confirmada`),
                 ...(hayAceptada ? ["confirmada"] : []),
               ].join(", ")}
               onClick={abrir}
@@ -457,6 +447,18 @@ export default function GestionAgendaPage() {
                     {canceladas}
                   </span>
                 )}
+                {tiposAceptada.map((t) => {
+                  const tipo = colorTipoCita(t.slug)
+                  return (
+                    <span
+                      key={t.slug ?? "interna"}
+                      className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-[11px] font-bold ring-2 ring-white shadow-sm ${tipo.clase}`}
+                      title={`${t.cantidad} ${tipo.nombre}${t.cantidad === 1 ? "" : "es"} confirmada`}
+                    >
+                      {t.cantidad}
+                    </span>
+                  )
+                })}
               </div>
 
               {/* El `+` solo aparece en bloques sin `aceptada`: una confirmada
@@ -527,26 +529,6 @@ export default function GestionAgendaPage() {
           {form && (
             <form onSubmit={guardarForm} className="space-y-4 p-4">
               <div className="space-y-2">
-                <Label htmlFor="cliente_id">Cliente (opcional)</Label>
-                <Select
-                  value={form.cliente_id}
-                  onValueChange={(v) => setForm({ ...form, cliente_id: v === "sin-cliente" ? "" : v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar cliente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sin-cliente">-- Sin cliente --</SelectItem>
-                    {clientes.map((cliente) => (
-                      <SelectItem key={cliente.id} value={cliente.id}>
-                        {cliente.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="nombre_solicitante">Nombre solicitante</Label>
                 <Input
                   id="nombre_solicitante"
@@ -556,169 +538,19 @@ export default function GestionAgendaPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    placeholder="email@ejemplo.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="telefono">Teléfono</Label>
-                  <Input
-                    id="telefono"
-                    value={form.telefono}
-                    onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-                    placeholder="+57 300 000 0000"
-                  />
-                </div>
-              </div>
-
-              {/* Fecha y bloque: la cita siempre cae en la retícula, así la regla
-                  de cupo por bloque es coherente con lo que se ve en la grilla. */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="fecha">Fecha</Label>
-                  <Input
-                    id="fecha"
-                    type="date"
-                    value={form.fecha}
-                    onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="hora">Bloque</Label>
-                  <Select
-                    value={BLOQUES.some((b) => b.inicio === form.hora) ? form.hora : "personalizada"}
-                    onValueChange={(v) => {
-                      if (v !== "personalizada") setForm({ ...form, hora: v })
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BLOQUES.map((bloque) => (
-                        <SelectItem key={bloque.inicio} value={bloque.inicio}>
-                          {bloque.label}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="personalizada">Otra hora…</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {!BLOQUES.some((b) => b.inicio === form.hora) && (
-                <div className="space-y-2">
-                  <Label htmlFor="hora_libre">Hora (UTC)</Label>
-                  <Input
-                    id="hora_libre"
-                    type="time"
-                    value={form.hora}
-                    onChange={(e) => setForm({ ...form, hora: e.target.value || form.hora })}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Hora fuera de bloque: la cita se verá en “Citas fuera de bloque”.
-                  </p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="duracion_minutos">Duración</Label>
-                  <Select
-                    value={String(form.duracion_minutos)}
-                    onValueChange={(v) => setForm({ ...form, duracion_minutos: Number(v) })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="60">60 min</SelectItem>
-                      <SelectItem value="90">90 min</SelectItem>
-                      <SelectItem value="120">120 min</SelectItem>
-                      <SelectItem value="180">180 min</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="origen">Origen</Label>
-                  <Select
-                    value={form.origen}
-                    onValueChange={(v) =>
-                      setForm({ ...form, origen: v as "web" | "interna" })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="interna">Interna</SelectItem>
-                      <SelectItem value="web">Web</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
               <div className="space-y-2">
-                <Label htmlFor="modalidad_id">Modalidad</Label>
-                <Select
-                  value={form.modalidad_id || "sin-modalidad"}
-                  onValueChange={(v) =>
-                    setForm({ ...form, modalidad_id: v === "sin-modalidad" ? "" : v })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sin-modalidad">Sin modalidad</SelectItem>
-                    {modalidades.map((modalidad) => (
-                      <SelectItem key={modalidad.id} value={modalidad.id}>
-                        {modalidad.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  El cupo es por modalidad: una virtual no bloquea una presencial del mismo bloque.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="direccion">Dirección de la visita</Label>
+                <Label htmlFor="telefono">Teléfono</Label>
                 <Input
-                  id="direccion"
-                  value={form.direccion}
-                  onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-                  placeholder="Ej. Cra 10 # 20-30"
+                  id="telefono"
+                  type="tel"
+                  inputMode="tel"
+                  value={form.telefono}
+                  onChange={(e) =>
+                    setForm({ ...form, telefono: maskTelefono(e.target.value) })
+                  }
+                  placeholder="+57 (___) ___-____"
                 />
               </div>
-
-              {form.id && (
-                <div className="space-y-2">
-                  <Label htmlFor="estado">Estado</Label>
-                  <Select
-                    value={form.estado}
-                    onValueChange={(v) => setForm({ ...form, estado: v as EstadoCita })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="en_espera">En espera</SelectItem>
-                      <SelectItem value="aceptada">Aceptada</SelectItem>
-                      <SelectItem value="cancelada">Cancelada</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
 
               <div className="space-y-2">
                 <Label htmlFor="descripcion">Descripción</Label>
@@ -728,28 +560,6 @@ export default function GestionAgendaPage() {
                   onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
                   placeholder="Detalles de la cita..."
                   rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="meet_link">Enlace Meet (opcional)</Label>
-                <Input
-                  id="meet_link"
-                  type="url"
-                  value={form.meet_link}
-                  onChange={(e) => setForm({ ...form, meet_link: e.target.value })}
-                  placeholder="https://meet.google.com/..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notas">Notas internas</Label>
-                <Textarea
-                  id="notas"
-                  value={form.notas}
-                  onChange={(e) => setForm({ ...form, notas: e.target.value })}
-                  placeholder="Notas para el equipo..."
-                  rows={2}
                 />
               </div>
 
@@ -780,6 +590,13 @@ export default function GestionAgendaPage() {
           abrirFormEditar(cita)
         }}
         onConfirmar={confirmarCita}
+        onNuevaCita={() => {
+          if (bloqueAbierto?.fecha) {
+            abrirFormNueva(new Date(bloqueAbierto.fecha))
+          } else {
+            abrirFormGlobal()
+          }
+        }}
       />
 
     </div>

@@ -139,7 +139,7 @@ Filas sembradas por la migración:
 | slug | nombre | descripcion | costo | duracion_minutos | orden |
 |---|---|---|---|---|---|
 | `virtual` | Virtual | Videollamada con tu diseñador. Sin costo. | 0 | 90 | 0 |
-| `presencial` | Presencial | Visita a tu domicilio y toma de medidas. | 70000 | 120 | 1 |
+| `presencial` | Presencial | Visita a tu domicilio y toma de medidas. | 70000 | 90 | 1 |
 
 El backfill de `slug` de la migración es heurístico (`%virtual%`/`%online%` → `virtual`;
 `%presencial%`/`%taller%`/`%medidas%` → `presencial`). El `INSERT ... ON CONFLICT DO NOTHING`

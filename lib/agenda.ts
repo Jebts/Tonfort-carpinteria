@@ -9,11 +9,17 @@ import type { CitaEnSlot } from "@/lib/citas-service"
 import type { EstadoSlot } from "@/lib/supabase/types"
 
 // Configuración de la agenda de la carpintería.
-// Ajustable por el equipo: días y bloques de 120 min.
+// Las citas duran 90 min (1 h 30 m). Los bloques de la retícula siguen siendo
+// de 2 h (120 min); los 30 min restantes de cada bloque son la gabela
+// (tolerancia/gracia) entre citas.
 // 0 = domingo, 1 = lunes, ... 6 = sábado.
 export const DIAS_LABORALES = [1, 2, 3, 4, 5, 6] // Lun–Sáb
 
-export const DURACION_MINUTOS = 120
+export const DURACION_MINUTOS = 90
+
+// Gabela (tolerancia/gracia) entre citas, en minutos. Es el sobrante de cada
+// bloque de 2 h una vez descontados los 90 min de la cita.
+export const GABELA_MINUTOS = 30
 
 // Bloques fijos de 2 h.
 export const BLOQUES: { inicio: string; fin: string; label: string }[] = [

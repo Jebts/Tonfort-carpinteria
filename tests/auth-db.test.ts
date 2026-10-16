@@ -65,30 +65,6 @@ describe("validarCredencialesDB", () => {
     expect(sesion?.usuario).toBe("admin@tonfort.local")
   })
 
-  it("permite login de admin con fallback a INITIAL_ADMIN_PASSWORD o admin12345", async () => {
-    const otherHash = await hashPasswordForEnv("other_secret")
-    mockSupabase.client = makeSupabase({
-      usuarios: [
-        {
-          data: {
-            id: "user-1",
-            email: "admin@tonfort.local",
-            password_hash: otherHash,
-            nombre: "Admin",
-            rol: "admin",
-            activo: true,
-          },
-          error: null,
-        },
-        { data: null, error: null }, // update call
-      ],
-    }) as unknown as SupabaseClient
-
-    const sesion = await validarCredencialesDB("admin", "admin12345")
-    expect(sesion).not.toBeNull()
-    expect(sesion?.rol).toBe("admin")
-  })
-
   it("retorna null si la contraseña es incorrecta", async () => {
     const hash = await hashPasswordForEnv("correct_pass")
     mockSupabase.client = makeSupabase({

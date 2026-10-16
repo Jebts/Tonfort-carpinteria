@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { validarCredencialesDB } from "@/lib/auth-db"
-import { setSessionCookie } from "@/lib/staff-auth"
+import { crearSesionYCookie } from "@/lib/staff-auth"
 import { loginSchema } from "@/lib/validators"
 import { createRateLimiter, getClientIp } from "@/lib/rate-limit"
 
@@ -38,6 +38,6 @@ export async function POST(req: NextRequest) {
   }
 
   const res = NextResponse.json({ ok: true, sesion })
-  setSessionCookie(res, sesion)
+  await crearSesionYCookie(res, sesion.id, sesion.rol, sesion.usuario, sesion.nombre, ip)
   return res
 }

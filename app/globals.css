@@ -325,10 +325,10 @@
      IntersectionObserver de la sección que la contiene. Fuera de viewport el
      `filter: blur(18px) contrast(1.15)` sigue aplicando pero no se repinta. */
   .tonfort-fabric {
-    background: radial-gradient(ellipse at 18% 55%, rgba(55,105,230,.95) 0 7%, transparent 26%),
-                radial-gradient(ellipse at 72% 42%, rgba(20,45,140,.8) 0 9%, transparent 31%),
-                repeating-linear-gradient(102deg, transparent 0 7%, rgba(55,105,230,.35) 8% 10%, transparent 13% 20%),
-                #02040b;
+    background: radial-gradient(ellipse at 18% 55%, rgba(0,0,0,.6) 0 7%, transparent 26%),
+                radial-gradient(ellipse at 72% 42%, rgba(10,10,10,.5) 0 9%, transparent 31%),
+                repeating-linear-gradient(102deg, transparent 0 7%, rgba(0,0,0,.25) 8% 10%, transparent 13% 20%),
+                #000000;
     filter: blur(18px) contrast(1.15);
     transform: skewY(-3deg);
     will-change: transform;

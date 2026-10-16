@@ -49,7 +49,7 @@ export function FondoBurbujas() {
       <div className="tonfort-fabric absolute inset-[-10%] opacity-35" data-vivo={inView} />
       {/* El radial original terminaba en negro; aquí cierra sobre el navy de la
           sección para que el video no se recorte en un rectángulo. */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_15%,#0B1D3A_76%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_15%,#000000_76%)]" />
     </div>
   )
 }

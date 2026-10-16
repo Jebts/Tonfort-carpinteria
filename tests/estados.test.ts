@@ -21,7 +21,7 @@ describe("estiloEstado", () => {
 describe("etiquetaCita", () => {
   it("refleja el estado base", () => {
     expect(etiquetaCita("en_espera", false)).toBe("En espera")
-    expect(etiquetaCita("aceptada", false)).toBe("Agendada")
+    expect(etiquetaCita("aceptada", false)).toBe("Confirmadas")
     expect(etiquetaCita("cancelada", false)).toBe("Cancelada")
   })
 })

@@ -49,6 +49,17 @@ export interface Usuario {
   actualizado_en: string
 }
 
+export interface SesionStaff {
+  id: string
+  usuario_id: string
+  token_hash: string
+  expires_at: string
+  revocado: boolean
+  creado_en: string
+  ip: string | null
+  user_agent: string | null
+}
+
 export interface Cliente {
   id: string
   nombre: string

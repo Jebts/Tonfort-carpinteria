@@ -4,6 +4,7 @@ import {
   crearCitaWeb,
   getCitasTableName,
   getModalidadPorSlug,
+  tieneCitaRecientePorIP,
   validarSlotLibre,
 } from "@/lib/citas-service"
 import { citaPublicaSchema } from "@/lib/validators"
@@ -96,8 +97,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Backend no configurado" }, { status: 500 })
   }
 
-  if (ipReal) {
-    // El cupo es por bloque (misma IP + misma modalidad + misma ventana de 2 h):
+    if (ipReal) {
+      // Una IP (dispositivo) solo puede crear una cita cada 24 horas. Si ya
+      // tiene una no cancelada en esa ventana, se bloquea y el cliente se
+      // redirige a la página de solicitud recibida.
+      if (await tieneCitaRecientePorIP(supabase, ipReal)) {
+        return NextResponse.json(
+          {
+            error:
+              "Ya tienes una cita agendada para hoy. Se permite una cita por dispositivo cada 24 horas. Vuelve mañana para agendar otra.",
+          },
+          { status: 409 },
+        )
+      }
+
+      // El cupo es por bloque (misma IP + misma modalidad + misma ventana de 2 h):
     // una cita en el bloque 08:00 no impide agendar el 14:00 del mismo dia, y
     // una virtual no bloquea una presencial. La logica correcta ya vivia en
     // `validarSlotLibre`; la validacion semanal de abajo era mas restrictiva.
