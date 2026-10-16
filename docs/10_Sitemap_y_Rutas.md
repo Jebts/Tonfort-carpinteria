@@ -67,7 +67,7 @@ Rutas bajo `/staff/diseno/*` (`disenador` y `admin`).
 | Producto Detalle | `/staff/diseno/proyectos/:id/productos/:productoId` | `productos`, `propuestas_3d` | Listado de propuestas |
 | Propuestas Lista | `/staff/diseno/proyectos/:id/productos/:productoId/propuestas` | `propuestas_3d` | Crear propuesta |
 | Propuesta Editor | `/staff/diseno/proyectos/:id/productos/:productoId/propuestas/:propuestaId` | `propuestas_3d`, `propuestas_3d_animaciones` | Upload video global, frame centro, estado, link privado, publicar portafolio, animaciones |
-| Visores Landing | `/staff/diseno/visores` | `visores_landing`, `visores_landing_animaciones` | Upsert del visor por `slot` (solo `admin` escribe), animaciones y upload del video global |
+| Visores Landing | `/staff/administracion/visores` | `visores_landing`, `visores_landing_animaciones` | Lista de N visores: crear, reordenar (`orden`), activar/desactivar, eliminar, animaciones y upload del video global (solo `admin`) |
 
 ---
 
@@ -81,8 +81,7 @@ Estado verificado sobre `app/` tras el refactor del espacio público. Contrato c
 | Landing | `/` | `visores_landing`, `proyectos`, `usuarios` | Lectura |
 | Sede | `/sede` | `lib/contact.ts` | Lectura |
 | Historia | `/historia` | `content/historia.ts` | Lectura |
-| Portafolio (alias) | `/portafolio` | — | 307 a `/portafolio/santa-marta` |
-| Portafolio [Sede] | `/portafolio/:sede` | `proyectos` (`publicado = true`, `sede`, `categoria`) | Catálogo con filtro `?categoria=` |
+| Portafolio | `/portafolio` | `proyectos` (`publicado = true`, `categoria`) | Catálogo único con una lista por sede (Santa Marta, Bogotá) y filtro `?categoria=` |
 | Portafolio [Proyecto] | `/portafolio/:sede/:slug` | `proyectos`, `proyectos_fotos`, `propuestas_3d` (visor) | Ficha plana, sin datos de cliente ni staff |
 | Enlace Privado Cliente | `/propuestas/:token` | `propuestas_3d`, `propuestas_3d_animaciones` | Visor `VideoViewer` privado |
 | Cotización Cliente | `/cotizaciones/:token` | `cotizaciones`, `cotizacion_propuestas` | Vista pública y selección |
@@ -90,7 +89,7 @@ Estado verificado sobre `app/` tras el refactor del espacio público. Contrato c
 | Paso 1 modalidad | `/agenda/modalidad` | `modalidades_cita` | Elección de modalidad |
 | Paso 2 horario | `/agenda/horario` | `citas` (slots por modalidad) | Reserva pública de cita |
 | Solicitud recibida | `/agenda/solicitud-recibida` | `citas`, `modalidades_cita` | Confirmación de la cita |
-| Sitemap | `/sitemap.xml` | — | 6 URLs estáticas |
+| Sitemap | `/sitemap.xml` | — | 5 URLs estáticas |
 
 ### Flujo de agenda (2 pasos)
 
@@ -135,7 +134,8 @@ Reglas del flujo:
 | `/agenda/paso-2` | `/agenda/modalidad` | 301 | Ruta legacy del flujo viejo |
 | `/agenda/paso-3` | `/agenda/modalidad` | 301 | Ruta legacy del flujo viejo |
 | `/agenda/confirmacion` | `/agenda/modalidad` | 301 | Ruta legacy del flujo viejo |
-| `/portafolio` | `/portafolio/santa-marta` | 307 | El portafolio se publica por sede |
+| `/portafolio/santa-marta` | `/portafolio` | 308 | El catálogo pasó a ser una sola página con las dos listas |
+| `/portafolio/bogota` | `/portafolio` | 308 | El catálogo pasó a ser una sola página con las dos listas |
 | `/proyectos` | `/portafolio` | 307 | Alias histórico |
 
 Los `paso-*` y `confirmacion` son Route Handlers (`route.ts`) con `GET` que responden 301
@@ -156,8 +156,8 @@ exentos son `/staff/login` y `/api/staff/login` (con sus subrutas).
 | `/staff/diseno/**` | Requiere cookie staff válida | `admin`, `disenador` (403 si asesor) | Taller de diseño |
 | `/api/staff/login` | Exento | — | Autenticación |
 | `/api/staff/usuarios/**` | Requiere staff | `admin` | CRUD de usuarios |
-| `/api/staff/diseno/**` | Requiere staff | `admin`, `disenador` (lectura); escritura de `visores-landing` solo `admin` | CRUD de propuestas, animaciones y visores |
-| `/api/staff/administracion/**` | Requiere staff | `admin` | Panel de publicación y cotizaciones |
+| `/api/staff/diseno/**` | Requiere staff | `admin`, `disenador` | CRUD de proyectos, productos, propuestas y animaciones |
+| `/api/staff/administracion/**` | Requiere staff | `admin` | Panel de publicación, cotizaciones y visores de la landing |
 | `/api/public/**` | Exento | — | Endpoints públicos con RLS |
 
 ### Alias legacy del panel

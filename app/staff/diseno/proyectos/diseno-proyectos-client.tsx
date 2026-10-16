@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { FileText, ChevronRight, Plus, Edit, Trash2 } from "lucide-react"
+import { FileText, ChevronRight, Plus, Edit, Trash2, Filter, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -24,6 +24,14 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface Proyecto {
   id: string
@@ -36,6 +44,8 @@ interface Proyecto {
   publicado: boolean
   created_at: string
   updated_at: string
+  sede: string | null
+  categoria: string | null
   asignado: {
     id: string
     nombre: string
@@ -43,6 +53,8 @@ interface Proyecto {
     rol: string
   } | null
 }
+
+type FiltroSede = "santa_marta" | "bogota" | "todas"
 
 interface DisenoProyectosClientProps {
   rol: "admin" | "asesor" | "disenador"
@@ -56,23 +68,40 @@ export function DisenoProyectosClient({ rol }: DisenoProyectosClientProps) {
   const [eliminandoId, setEliminandoId] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [titulo, setTitulo] = useState("")
+  const [filtroSede, setFiltroSede] = useState<FiltroSede>("santa_marta")
+  const [filtroConVisor, setFiltroConVisor] = useState(false)
+
+  const construirUrlFiltros = () => {
+    const params = new URLSearchParams()
+    if (filtroSede !== "todas") params.set("sede", filtroSede)
+    if (filtroConVisor) params.set("conVisor", "true")
+    return params.toString() ? `?${params.toString()}` : ""
+  }
+
+  const fetchProyectos = async () => {
+    setCargando(true)
+    try {
+      const res = await fetch(`/api/staff/diseno/proyectos${construirUrlFiltros()}`, { credentials: "include" })
+      if (!res.ok) throw new Error("Error al cargar proyectos")
+      const data = await res.json()
+      setProyectos(data.proyectos ?? [])
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al cargar proyectos")
+    } finally {
+      setCargando(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchProyectos = async () => {
-      setCargando(true)
-      try {
-        const res = await fetch("/api/staff/diseno/proyectos", { credentials: "include" })
-        if (!res.ok) throw new Error("Error al cargar proyectos")
-        const data = await res.json()
-        setProyectos(data.proyectos ?? [])
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Error al cargar proyectos")
-      } finally {
-        setCargando(false)
-      }
-    }
     fetchProyectos()
-  }, [])
+  }, [filtroSede, filtroConVisor])
+
+  const limpiarFiltros = () => {
+    setFiltroSede("santa_marta")
+    setFiltroConVisor(false)
+  }
+
+  const hayFiltrosActivos = filtroSede !== "santa_marta" || filtroConVisor
 
   const handleCrear = async () => {
     if (!titulo.trim()) {
@@ -226,22 +255,70 @@ export function DisenoProyectosClient({ rol }: DisenoProyectosClientProps) {
         </Button>
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3">
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-muted-foreground">Filtros:</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Label htmlFor="filtro-sede" className="text-xs text-muted-foreground">Sede</Label>
+          <Select value={filtroSede} onValueChange={(v) => setFiltroSede(v as FiltroSede)}>
+            <SelectTrigger id="filtro-sede" className="w-[180px]">
+              <SelectValue placeholder="Sede" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="santa_marta">Santa Marta (visor 3D)</SelectItem>
+              <SelectItem value="bogota">Bogotá (histórico)</SelectItem>
+              <SelectItem value="todas">Todas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Label htmlFor="filtro-visor" className="flex items-center gap-1.5 cursor-pointer">
+            <Checkbox
+              id="filtro-visor"
+              checked={filtroConVisor}
+              onCheckedChange={(checked) => setFiltroConVisor(checked === true)}
+            />
+            <span className="text-sm">Solo con visor 3D</span>
+          </Label>
+        </div>
+
+        {hayFiltrosActivos && (
+          <Button variant="ghost" size="icon" className="press" onClick={limpiarFiltros} title="Limpiar filtros">
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         {proyectos.length === 0 ? (
           <div className="p-8 text-center">
             <FileText className="h-12 w-12 mx-auto text-muted-foreground/50" />
-            <h3 className="mt-4 font-medium text-foreground">No hay proyectos asignados</h3>
+            <h3 className="mt-4 font-medium text-foreground">
+              {hayFiltrosActivos ? "No hay proyectos con los filtros actuales" : "No hay proyectos asignados"}
+            </h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              {rol === "admin"
+              {hayFiltrosActivos
+                ? "Prueba cambiando los filtros o limpiándolos."
+                : rol === "admin"
                 ? "Crea un nuevo proyecto desde este panel para iniciar el diseño."
                 : "Contacta al administrador para que te asigne proyectos."}
             </p>
+            {hayFiltrosActivos && (
+              <Button className="mt-4 press" variant="outline" onClick={limpiarFiltros}>
+                <X className="mr-2 h-4 w-4" /> Limpiar filtros
+              </Button>
+            )}
           </div>
         ) : (
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-muted/50">
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-widest text-muted-foreground">Título</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-widest text-muted-foreground">Sede</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-widest text-muted-foreground">Estado</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-widest text-muted-foreground">Actualizado</th>
                 <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-widest text-muted-foreground">Acciones</th>
@@ -252,6 +329,9 @@ export function DisenoProyectosClient({ rol }: DisenoProyectosClientProps) {
                 <tr key={proyecto.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3">
                     <p className="font-medium text-foreground">{proyecto.titulo}</p>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                    {proyecto.sede === "santa_marta" ? "Santa Marta" : proyecto.sede === "bogota" ? "Bogotá" : "—"}
                   </td>
                   <td className="px-4 py-3">
                     <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", proyecto.publicado ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200")}>

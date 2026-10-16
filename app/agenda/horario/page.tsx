@@ -37,9 +37,13 @@ export default async function AgendaHorarioPage({
     modalidadId: modalidad.id,
   })
 
+  // Contadores del bloque (en espera / canceladas) sin datos de contacto: la
+  // grilla los pinta como círculos encima de cada celda.
   const slotsIniciales: BloqueSemana[] = slots.map((s) => ({
     fecha_hora: s.fecha_hora,
     estado: s.estado,
+    enEspera: s.enEspera,
+    canceladas: s.canceladas,
   }))
 
   return (

@@ -10,10 +10,15 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:check": "node infra/scripts/check-tables.js",
+    "db:migrate": "node infra/scripts/aplicar-migracion.js",
     "db:seed": "node infra/scripts/reset-and-seed.js",
+    "db:reinit": "node infra/scripts/reinit.mjs",
     "db:seed-admin": "tsx infra/scripts/seed-admin.ts"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",
@@ -62,6 +67,7 @@
     "react": "^19",
     "react-day-picker": "9.8.0",
     "react-dom": "^19",
+    "react-dropzone": "^20.1.3",
     "react-hook-form": "^7.60.0",
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.4",

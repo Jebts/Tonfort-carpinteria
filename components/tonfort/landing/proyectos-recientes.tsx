@@ -3,45 +3,20 @@ import Image from "next/image"
 import { ArrowUpRight } from "lucide-react"
 import { getProyectosPublicados } from "@/lib/portfolio-service"
 import { ETIQUETA_CATEGORIA, SLUG_SEDE } from "@/lib/supabase/types"
-import { PROYECTOS, PROYECTOS_FALLBACK } from "@/content/landing"
+import { PROYECTOS } from "@/content/landing"
 import { FALLBACK_PORTADA } from "@/components/tonfort/public-data"
 
 const REPETICIONES = 3
 
-interface Tarjeta {
-  key: string
-  titulo: string
-  categoria: string | null
-  href: string | null
-  image: string
-}
-
-// Los 3 proyectos más recientes publicados de Santa Marta. Si la BD no tiene
-// 3, se completa con fotos de `/public` para que la sección no quede coja.
+// Los 3 primeros proyectos publicados por número de presentación, mezclando las
+// dos sedes: sin `sede` la query mezcla Bogotá y Santa Marta y ordena por
+// `orden`. El servicio ya lo hace, así que aquí no hay nada que reordenar.
+// Si la BD no devuelve ninguno, la sección no se renderiza: antes se rellenaba
+// con `PROYECTOS_FALLBACK`, que eran fotos de render sin proyecto detrás.
 export async function ProyectosRecientes() {
-  const proyectos = await getProyectosPublicados({
-    sede: "santa_marta",
-    limite: REPETICIONES,
-  })
+  const proyectos = await getProyectosPublicados({ limite: REPETICIONES })
 
-  const tarjetas: Tarjeta[] = proyectos.map((p) => ({
-    key: p.id,
-    titulo: p.titulo,
-    categoria: p.categoria ? ETIQUETA_CATEGORIA[p.categoria] : null,
-    href: `/portafolio/${SLUG_SEDE[p.sede]}/${p.slug}`,
-    image: p.portada_url ?? FALLBACK_PORTADA,
-  }))
-
-  for (const [i, fallback] of PROYECTOS_FALLBACK.entries()) {
-    if (tarjetas.length >= REPETICIONES) break
-    tarjetas.push({
-      key: `fallback-${i}`,
-      titulo: fallback.titulo,
-      categoria: null,
-      href: null,
-      image: fallback.image,
-    })
-  }
+  if (proyectos.length === 0) return null
 
   return (
     <section className="section-y bg-black">
@@ -52,7 +27,7 @@ export async function ProyectosRecientes() {
             <h2 className="display-lg font-display max-w-2xl text-white">{PROYECTOS.titulo}</h2>
           </div>
           <Link
-            href="/portafolio/santa-marta"
+            href="/portafolio"
             className="group inline-flex items-center gap-2 text-sm text-copy transition-colors hover:text-white"
           >
             {PROYECTOS.cta}
@@ -61,46 +36,34 @@ export async function ProyectosRecientes() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">
-          {tarjetas.map((tarjeta, i) => {
-            // La segunda imagen baja 12%: desfase del ritmo editorial.
-            const desfase = i === 1 ? "md:translate-y-12" : ""
+          {proyectos.map((p) => {
+            const categoria = p.categoria ? ETIQUETA_CATEGORIA[p.categoria] : null
 
-            const contenido = (
-              <>
-                <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-elevated">
+            return (
+              <Link
+                key={p.id}
+                href={`/portafolio/${SLUG_SEDE[p.sede]}/${p.slug}`}
+                className="group block"
+              >
+                {/* Las portadas son 1024×1024: `aspect-square` es la proporción real. */}
+                <div className="relative aspect-square overflow-hidden rounded-2xl bg-elevated">
                   <Image
-                    src={tarjeta.image}
-                    alt={tarjeta.titulo}
+                    src={p.portada_url ?? FALLBACK_PORTADA}
+                    alt={p.titulo}
                     fill
                     sizes="(max-width: 768px) 100vw, 33vw"
                     className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                  {tarjeta.categoria && (
-                    <p className="eyebrow absolute left-4 top-4 text-warm-light">
-                      {tarjeta.categoria}
-                    </p>
+                  {categoria && (
+                    <p className="eyebrow absolute left-4 top-4 text-warm-light">{categoria}</p>
                   )}
                 </div>
                 <div className="mt-4 flex items-start justify-between gap-3">
-                  <h3 className="text-xl tracking-[-0.03em] text-white">{tarjeta.titulo}</h3>
-                  {tarjeta.href && (
-                    <ArrowUpRight className="mt-1 size-4 shrink-0 text-white/40 transition-all duration-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-white" />
-                  )}
+                  <h3 className="text-xl tracking-[-0.03em] text-white">{p.titulo}</h3>
+                  <ArrowUpRight className="mt-1 size-4 shrink-0 text-white/40 transition-all duration-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-white" />
                 </div>
-              </>
-            )
-
-            return (
-              <div key={tarjeta.key} className={desfase}>
-                {tarjeta.href ? (
-                  <Link href={tarjeta.href} className="group block">
-                    {contenido}
-                  </Link>
-                ) : (
-                  <div className="block opacity-70">{contenido}</div>
-                )}
-              </div>
+              </Link>
             )
           })}
         </div>

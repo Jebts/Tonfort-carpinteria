@@ -56,7 +56,7 @@ export default async function ProyectoPlanoPage({
   const datos = await getProyectoPublicadoPlano(slug)
   if (!datos) notFound()
 
-  const { proyecto, fotos, visor } = datos
+  const { proyecto, fotos, visores } = datos
   const sedeSlug = SLUG_SEDE[proyecto.sede]
   const etiquetaSede = ETIQUETA_SEDE[proyecto.sede]
 
@@ -113,18 +113,20 @@ export default async function ProyectoPlanoPage({
         </section>
       )}
 
-      {/* 3. Visor 3D. Solo Santa Marta y solo si hay propuesta publicada;
-             si no hay, la sección se omite sin dejar hueco. */}
-      {visor && (
+      {/* 3. Visores 3D. Uno por propuesta seleccionada, con el mismo formato
+              de la landing. Sin visores (o sede Bogotá) la sección se omite
+              sin dejar hueco. */}
+      {visores.map((visor, i) => (
         <LandingVisor
-          layout="inline"
+          key={`${visor.video_global_url}-${i}`}
           videoGlobalUrl={visor.video_global_url}
           frameCentroMs={visor.frame_centro_ms}
           animaciones={visor.animaciones}
           eyebrow="Visor 3D"
-          titulo={proyecto.titulo}
+          titulo={visor.titulo ?? proyecto.titulo}
+          descripcion={visor.descripcion}
         />
-      )}
+      ))}
 
       {/* 4. Galería */}
       <section className="px-6 py-20 md:px-10 md:py-28">
@@ -157,10 +159,10 @@ export default async function ProyectoPlanoPage({
               </Link>
             )}
             <Link
-              href={`/portafolio/${sedeSlug}`}
+              href="/portafolio"
               className="text-sm text-[#a1a1a6] transition-colors hover:text-white"
             >
-              Ver todos los de {etiquetaSede}
+              Ver todo el portafolio
             </Link>
           </div>
 

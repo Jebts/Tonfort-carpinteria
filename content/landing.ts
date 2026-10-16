@@ -1,15 +1,28 @@
-// Copy de las 7 secciones de la landing. Separado de los componentes para que
+// Copy de las 8 secciones de la landing. Separado de los componentes para que
 // el texto se pueda editar sin tocar JSX.
 
 export const HERO = {
-  eyebrow: "Carpintería · Santa Marta",
   tituloLineas: ["Muebles.", "Diseño.", "Luz."],
   // La segunda línea lleva gradiente.
   tituloGradienteDesdeLinea: 1,
-  bajada: "Diseñamos y fabricamos el espacio donde habitas.",
   cta: "Agendar cita",
   ctaSecundaria: "Ver portafolio",
-  microcopy: "Respuesta en 24 h. Sin compromiso.",
+} as const
+
+// Presentación formal del taller: qué hace Tonfort y qué piezas fabrica.
+// Copy institucional y sintético, sin adjetivos de más.
+export const NOSOTROS = {
+  eyebrow: "Nosotros",
+  tituloLineas: ["Diseñamos y fabricamos", "mobiliario a medida."],
+  tituloGradienteDesdeLinea: 1,
+  bajada:
+    "Tonfort es una carpintería de diseño. Tomamos las medidas de tu espacio, diseñamos cada pieza en 3D, la fabricamos en nuestro taller y la instalamos con su iluminación integrada.",
+  puntos: [
+    { titulo: "Cocinas", texto: "Islas, encimeras y almacenamiento a medida." },
+    { titulo: "Closets", texto: "Armarios y vestidores con luz interior." },
+    { titulo: "Muebles de TV", texto: "Muros de medios y libreros integrados." },
+    { titulo: "Puertas y espacios", texto: "Puertas de paso y ambientes completos." },
+  ],
 } as const
 
 export const LUZ = {
@@ -31,41 +44,39 @@ export const PROYECTOS = {
   cta: "Ver todo el portafolio",
 } as const
 
-// Fotos de respaldo cuando la BD no devuelve 3 proyectos publicados.
-export const PROYECTOS_FALLBACK: { titulo: string; image: string }[] = [
-  { titulo: "Closet a medida", image: "/tonfort-closet-render.png" },
-  { titulo: "Mueble de TV", image: "/tonfort-hero-wall.png" },
-  { titulo: "Mesa de comedor", image: "/tonfort-hero-plant.png" },
-]
+// Texto de apoyo de la sección de presentación de diseños. Va en el bloque, no
+// en el carrusel: el carrusel solo dibuja visores.
+export const VISORES = {
+  eyebrow: "Propuestas",
+  titulo: "Mira cómo se presentan los diseños.",
+  descripcion:
+    "Cada propuesta se recorre en video: mueve el cursor y explora los detalles.",
+} as const
 
 export interface PersonaEquipo {
   nombre: string
   rol: string
   foto: string
-  texto: string
 }
 
 export const EQUIPO = {
   eyebrow: "Equipo",
-  titulo: "Tres roles, un mismo estándar.",
+  titulo: "Tres roles",
   personas: [
     {
       nombre: "Santiago Bustos",
-      rol: "Carpintería",
+      rol: "Carpintero",
       foto: "/equipo/santiago.jpg",
-      texto: "Construye las piezas y lee la madera.",
     },
     {
       nombre: "Natalia Bustos",
-      rol: "Diseño",
+      rol: "Asesora",
       foto: "/equipo/natalia.jpg",
-      texto: "Dibuja el espacio y mide cada detalle.",
     },
     {
       nombre: "Esteban Bustos",
-      rol: "Asesoría",
+      rol: "Diseñador",
       foto: "/equipo/esteban.jpg",
-      texto: "Escucha el proyecto y acompaña la obra.",
     },
   ] satisfies PersonaEquipo[],
 } as const

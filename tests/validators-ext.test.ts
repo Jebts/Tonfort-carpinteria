@@ -34,6 +34,40 @@ describe("citaPublicaSchema", () => {
     ).toBe(true)
   })
 
+  it("acepta descripcion null (lo que manda el formulario público)", () => {
+    // El cliente envía `descripcion: null` cuando el usuario no escribe nada:
+    // con `.optional()` (sin null) estas solicitudes morían con 422 y nadie
+    // podía agendar sin descripción.
+    expect(
+      citaPublicaSchema.safeParse({
+        nombre: "Juan",
+        telefono: "3001234567",
+        descripcion: null,
+        fecha_hora: "2026-08-20T10:00:00.000Z",
+        modalidad: "virtual",
+      }).success,
+    ).toBe(true)
+  })
+
+  it("normaliza descripcion vacía o nula a null", () => {
+    const vacia = citaPublicaSchema.parse({
+      nombre: "Juan",
+      telefono: "3001234567",
+      descripcion: "",
+      fecha_hora: "2026-08-20T10:00:00.000Z",
+      modalidad: "virtual",
+    })
+    const nula = citaPublicaSchema.parse({
+      nombre: "Juan",
+      telefono: "3001234567",
+      descripcion: null,
+      fecha_hora: "2026-08-20T10:00:00.000Z",
+      modalidad: "virtual",
+    })
+    expect(vacia.descripcion).toBeNull()
+    expect(nula.descripcion).toBeNull()
+  })
+
   it("rechaza nombre corto y modalidad fuera del catálogo", () => {
     expect(
       citaPublicaSchema.safeParse({

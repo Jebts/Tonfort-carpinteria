@@ -36,6 +36,7 @@ npm run lint        # ESLint
 npm run typecheck   # tsc --noEmit
 npm test            # Vitest
 npm run db:check   # Verifica tablas en Supabase
+npm run db:reinit  # Reset + seed demo + carga portafolio Bogotá (idempotente)
 npm run db:seed    # TRUNCATE + seed demo
 ```
 
@@ -44,4 +45,4 @@ npm run db:seed    # TRUNCATE + seed demo
 - `docs/RUTAS.md` — contrato de rutas y backend
 - `docs/Organigrama.md` — flujo de despliegue
 - `docs/README.md` — índice de documentación
-- `docs/planificacion-3D/` — docs de planificación del módulo 3D (futuro)
+- `docs/planificacion-3D/` — docs de planificación del módulo 3D (no existen en el repo; plan aspiracional)

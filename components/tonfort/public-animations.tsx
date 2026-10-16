@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { useRef } from "react"
 import { motion, useScroll, useTransform } from "motion/react"
@@ -85,11 +86,30 @@ export function WordReveal({ text }: { text: string }) {
   )
 }
 
+// El paralaje se mueve sobre el contenedor, no sobre el `<img>`: `next/image`
+// genera un `<img>` con `position:absolute` y un bloque envoltorio propio, y
+// transformar el `<img>` lo saca de la composición del padre.
+// `hover` añade el zoom `group-hover` que usan las galerías de landing
+// (`proyectos-recientes`, `equipo`): va en el `<img>` y no en el `motion.div`
+// para no pelear con el `y` del `useScroll`. Constante y no interpolado dentro
+// del JSX para que el `className` sea exactamente el mismo en servidor y
+// cliente (un template con rama vacía dejaba un espacio final).
+const HOVER_IMG =
+  "object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06]"
+
 export function ParallaxImage({
   src,
   alt,
   className = "",
-}: { src: string; alt: string; className?: string }) {
+  sizes = "100vw",
+  hover = false,
+}: {
+  src: string
+  alt: string
+  className?: string
+  sizes?: string
+  hover?: boolean
+}) {
   const ref = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -97,24 +117,34 @@ export function ParallaxImage({
   })
   const y = useTransform(scrollYProgress, [0, 1], ["-8%", "8%"])
   return (
-    <div ref={ref} className={`overflow-hidden ${className}`}>
-      <motion.img src={src} alt={alt} style={{ y, scale: 1.16 }} className="size-full object-cover" />
+    <div ref={ref} className={`group relative overflow-hidden ${className}`}>
+      <motion.div style={{ y, scale: 1.16 }} className="absolute inset-0">
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          sizes={sizes}
+          className={hover ? HOVER_IMG : "object-cover"}
+        />
+      </motion.div>
     </div>
   )
 }
 
 export function CinematicBand({
   src,
-  eyebrow,
   title,
+  eyebrow,
   copy,
   align = "left",
   tone = "dark",
 }: {
   src: string
-  eyebrow: string
   title: string
-  copy: string
+  // Opcionales: una banda solo con titular es más editorial que una con
+  // antetítulo y bajada apinados.
+  eyebrow?: string
+  copy?: string
   align?: "left" | "right"
   tone?: Tone
 }) {
@@ -130,34 +160,50 @@ export function CinematicBand({
     0,
     align === "left" ? 25 : -25,
   ])
+  // El velo claro solo cubre el tercio donde va el texto: el resto de la foto se
+  // ve entera. Antes era `from-muted/92 via-muted/78 to-muted/34`, que tapaba
+  // la imagen con un muro crema.
   const scrim =
     tone === "light"
       ? align === "left"
-        ? "bg-gradient-to-r from-muted/92 via-muted/78 to-muted/34"
-        : "bg-gradient-to-l from-muted/92 via-muted/78 to-muted/34"
+        ? "bg-gradient-to-r from-muted/60 via-muted/15 to-transparent"
+        : "bg-gradient-to-l from-muted/60 via-muted/15 to-transparent"
       : align === "left"
         ? "bg-gradient-to-r from-black via-black/70 to-black/15"
         : "bg-gradient-to-l from-black via-black/70 to-black/15"
-  const radial =
-    tone === "light"
-      ? "bg-[radial-gradient(circle_at_70%_45%,rgba(40,86,199,.10),transparent_30%)]"
-      : "bg-[radial-gradient(circle_at_70%_45%,rgba(55,105,230,.08),transparent_28%)]"
   return (
-<section ref={ref} className={`relative min-h-[70vh] overflow-hidden md:min-h-[78vh] ${tone === "light" ? "bg-muted" : "bg-black"}`}>
-      <motion.img data-motion-reveal="" src={src} alt={eyebrow} style={{ scale, y }} className="absolute inset-0 size-full object-cover" />
+    <section ref={ref} className={`relative min-h-[70vh] overflow-hidden md:min-h-[78vh] ${tone === "light" ? "bg-muted" : "bg-black"}`}>
+      <motion.div
+        data-motion-reveal=""
+        style={{ scale, y }}
+        className="absolute inset-0"
+      >
+        <Image src={src} alt={title} fill sizes="100vw" className="object-cover" priority />
+      </motion.div>
       <div className={`absolute inset-0 ${scrim}`} />
-      <div className={`absolute inset-0 ${radial}`} />
       <motion.div
         data-motion-reveal=""
         style={{ x }}
         className={`relative z-10 flex min-h-[70vh] items-center px-5 py-16 md:min-h-[78vh] md:px-10 md:py-24 ${align === "right" ? "justify-end text-right" : ""}`}
       >
-        <div className="max-w-xl">
-          <p className={`eyebrow ${tone === "light" ? "text-royal drop-shadow-[0_1px_10px_rgba(247,244,238,.85)]" : "text-warm-light"}`}>{eyebrow}</p>
-          <h2 className={`display-lg font-display mt-4 ${tone === "light" ? "text-brand-navy drop-shadow-[0_2px_24px_rgba(247,244,238,.9)]" : "text-white"}`}>
-            <GradientText tone={tone}>{title}</GradientText>
+        <div className="max-w-xl [text-shadow:0_1px_24px_rgba(255,255,255,.55)]">
+          {eyebrow && (
+            <p className={`eyebrow ${tone === "light" ? "text-royal" : "text-warm-light"}`}>
+              {eyebrow}
+            </p>
+          )}
+          <h2 className={`display-lg font-display ${eyebrow ? "mt-4 " : ""}${tone === "light" ? "text-white" : "text-white"}`}>
+            {tone === "light" ? (
+              <span className="text-white [text-shadow:0_2px_24px_rgba(0,0,0,.55)]">{title}</span>
+            ) : (
+              <GradientText tone={tone}>{title}</GradientText>
+            )}
           </h2>
-          <p className={`mt-5 max-w-md text-sm leading-6 md:text-base ${tone === "light" ? "text-brand-navy/90 drop-shadow-[0_1px_12px_rgba(247,244,238,.85)]" : "text-copy"}`}>{copy}</p>
+          {copy && (
+            <p className={`mt-5 max-w-md text-sm leading-6 md:text-base ${tone === "light" ? "text-brand-navy/90" : "text-copy"}`}>
+              {copy}
+            </p>
+          )}
         </div>
       </motion.div>
     </section>
@@ -282,9 +328,10 @@ export function ButtonLink({
   )
 }
 
-// `aspect-[4/5]` para igualar la proporción de `components/tonfort/landing/
-// proyectos-recientes.tsx`: el mismo contenido de proyecto se mostraba con dos
-// formas distintas según la página.
+// `aspect-square` para igualar la proporción de `components/tonfort/landing/
+// proyectos-recientes.tsx`: las portadas son 1024×1024 (`FALLBACK_PORTADA` y
+// los `portada_url` subidos), y el mismo contenido de proyecto se mostraba
+// estirado a 4/5 según la página.
 export function ProjectCard({
   project,
 }: {
@@ -293,14 +340,20 @@ export function ProjectCard({
   const href = project.href ?? `/portafolio/santa-marta/${project.slug}`
   return (
     <Link href={href} className="group block">
-      <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-elevated">
-        <motion.img
-          src={project.image}
-          alt={project.title}
+      <div className="relative aspect-square overflow-hidden rounded-2xl bg-elevated">
+        <motion.div
           whileHover={{ scale: 1.07, y: -6 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="size-full object-cover"
-        />
+          className="absolute inset-0"
+        >
+          <Image
+            src={project.image}
+            alt={project.title}
+            fill
+            sizes="(max-width: 768px) 100vw, 33vw"
+            className="object-cover"
+          />
+        </motion.div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-5">
           <div>

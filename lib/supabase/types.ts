@@ -32,7 +32,8 @@ export type CategoriaMueble =
   | "espacio_integral"
   | "otro"
 
-// Slot del visor 3D dentro de la landing. Solo hay 2.
+// Slot legacy del visor 3D en la landing. El carrusel ya no lo usa (ver
+// `20260925000000_visores_carrusel.sql`): queda para leer filas antiguas.
 export type SlotVisorLanding = "primero" | "segundo"
 
 export interface Usuario {
@@ -126,10 +127,47 @@ export interface ProyectoFoto {
   created_at: string
 }
 
+// Visor 3D a nivel de proyecto (Santa Marta). Referencia una propuesta del
+// diseñador: el portafolio reusa su video y animaciones tal cual.
+export interface ProyectoVisor {
+  id: string
+  proyecto_id: string
+  propuesta_id: string
+  orden: number
+  activo: boolean
+  created_at: string
+  updated_at: string
+}
+
+// Propuesta elegible como visor, con su producto (para el selector del admin).
+export interface PropuestaDisponible {
+  id: string
+  producto_id: string
+  titulo: string
+  descripcion: string | null
+  video_global_url: string | null
+  frame_centro_ms: number | null
+  estado: EstadoPropuesta3D
+  orden: number
+  producto: {
+    id: string
+    titulo: string
+  }
+}
+
+// Visor con la propuesta resuelta, shape que consume el admin para previsualizar.
+export interface ProyectoVisorConPropuesta extends ProyectoVisor {
+  propuesta: PropuestaDisponible & {
+    descripcion: string | null
+    animaciones: Propuesta3DAnimacion[]
+  }
+}
+
 // Visor 3D de la landing. Espejo de Propuesta3D para reusar VideoViewer.
+// `slot` es legacy: el carrusel los ordena por `orden` y los identifica por `id`.
 export interface VisorLanding {
   id: string
-  slot: SlotVisorLanding
+  slot: SlotVisorLanding | null
   eyebrow: string | null
   titulo: string
   descripcion: string | null
@@ -285,6 +323,12 @@ export interface CotizacionConDetalles extends Cotizacion {
 export interface ProyectoConCliente extends Proyecto {
   cliente: Cliente | null
   asignado: Usuario | null
+}
+
+// Proyecto con su media resuelta: lo que consume el admin del portafolio.
+export interface ProyectoConMedia extends Proyecto {
+  fotos: ProyectoFoto[]
+  visores: ProyectoVisorConPropuesta[]
 }
 
 export interface ProductoConPropuestaCount extends Producto {

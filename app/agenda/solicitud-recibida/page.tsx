@@ -85,7 +85,7 @@ export default async function AgendaSolicitudRecibidaPage({
 
       <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
         <Link
-          href="/portafolio/santa-marta"
+          href="/portafolio"
           className="inline-flex h-[52px] items-center justify-center rounded-full bg-[#2856c7] px-8 font-semibold text-white transition hover:bg-[#1c46a8] active:scale-[.98]"
         >
           Ver portafolio

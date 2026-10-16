@@ -8,9 +8,9 @@ export function Equipo() {
   return (
     <section className="section-y bg-black">
       <div className="mx-auto max-w-7xl px-6 md:px-10">
-        <div className="mb-14 max-w-2xl">
+        <div className="mb-14 max-w-4xl">
           <p className="eyebrow mb-4 text-royal-bright">{EQUIPO.eyebrow}</p>
-          <h2 className="display-lg font-display text-white">{EQUIPO.titulo}</h2>
+          <h2 className="display-lg font-display text-balance text-white">{EQUIPO.titulo}</h2>
         </div>
 
         <div className="grid gap-10 md:grid-cols-3 md:gap-8">
@@ -39,7 +39,6 @@ export function Equipo() {
                 <p className="mt-2 text-[1.75rem] leading-tight tracking-[-0.04em] text-white">
                   {persona.nombre}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-copy">{persona.texto}</p>
               </figcaption>
             </motion.figure>
           ))}

@@ -5,37 +5,52 @@ import { SEDE, TELEFONO_URL, EMAIL_URL } from "@/lib/contact"
 // Ninguna oración supera los 160 caracteres.
 
 export const SEDE_HERO = {
-  eyebrow: "La sede",
-  tituloLineas: ["Un taller", "en la costa."],
-  subtitulo: "Donde cada mueble se diseña, se mide y se arma a mano.",
+  src: "/sede/hero-sede.png",
+  alt: "Mesa de trabajo de la sede con laptop abierta, impresora, silla y una cortina azul al fondo",
+  tituloLineas: ["Un taller", "donde la madera cobra forma."],
 } as const
 
 export const SEDE_VIDEO = {
   src: "/sede/video-taller.mp4",
-  poster: "/sede/poster-taller.png",
+  poster: "/sede/video-poster.png",
 } as const
 
 export interface FotoSede {
   src: string
   alt: string
-  layout: "ancho" | "cuadro"
+  layout: "ancho" | "cuadro" | "cuadrado"
 }
 
 export const SEDE_FOTOS: FotoSede[] = [
   {
-    src: "/sede/foto-1.jpg",
-    alt: "Banco de trabajo con herramientas y planos de carpintería",
+    src: "/sede/sede-mostrador.jpg",
+    alt: "Mostrador de madera clara con taburete de tronco y lámparas colgantes",
     layout: "ancho",
   },
   {
-    src: "/sede/foto-2.jpg",
-    alt: "Muestras de madera y herrajes ordenados sobre una mesa",
+    src: "/sede/sede-sofa.jpg",
+    alt: "Sofá de la sala de espera junto a la cortina azul con luz de la tarde",
     layout: "cuadro",
   },
   {
-    src: "/sede/foto-3.jpg",
-    alt: "Taller con luz natural y piezas en proceso",
+    src: "/sede/sede-escritorio.jpg",
+    alt: "Escritorio con laptop, teclado mecánico e impresora junto a la cortina azul",
     layout: "cuadro",
+  },
+  {
+    src: "/sede/sede-equipo.jpg",
+    alt: "Persona del equipo de pie junto a los paneles azules de la sede",
+    layout: "cuadro",
+  },
+  {
+    src: "/sede/sede-mostrador-espejo.jpg",
+    alt: "Mostrador de madera y mármol con espejo retroiluminado",
+    layout: "cuadrado",
+  },
+  {
+    src: "/sede/sede-herramientas.jpg",
+    alt: "Panel perforado con sierras y taladros ordenados",
+    layout: "cuadrado",
   },
 ]
 

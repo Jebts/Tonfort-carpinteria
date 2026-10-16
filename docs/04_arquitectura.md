@@ -28,7 +28,7 @@ de este repo.
 ├── app/                        # App Router (Next.js idiomatic — sin src/)
 │   ├── api/                    # Route Handlers (app/api/)
 │   │   ├── public/             # Endpoints públicos: portafolio, visores de landing, propuestas por token
-│   │   ├── staff/              # Auth, clientes, citas, diseno (productos, propuestas, animaciones, visores), administracion
+│   │   ├── staff/              # Auth, clientes, citas, diseno (productos, propuestas, animaciones), administracion (visores)
 │   │   ├── citas/              # Agenda pública de citas (disponibilidad + reserva)
 │   │   ├── cotizaciones/       # Módulo histórico de costeo técnico — ARCHIVADO (handlers 404)
 │   │   ├── materiales/         # Módulo histórico — ARCHIVADO (handlers 404)
@@ -40,35 +40,42 @@ de este repo.
 │   │   ├── paso-1/ paso-2/ paso-3/ confirmacion/   # Route Handlers: 301 a /agenda/modalidad
 │   │   └── layout.tsx          # Layout claro de la agenda (única sección en modo claro)
 │   ├── sede/                   # Página de la sede (ubicación, mapa, datos de lib/contact.ts)
-│   ├── portafolio/             # Portafolio público por sede
-│   │   ├── page.tsx            # Alias → /portafolio/santa-marta
-│   │   └── [sede]/             # Listado (?categoria=) y [slug]/ ficha plana del proyecto
+│   ├── portafolio/             # Portafolio público (una página, dos listas)
+│   │   ├── page.tsx            # Catálogo único: lista de Santa Marta + lista de Bogotá (?categoria=)
+│   │   └── [sede]/             # redirect 308 a /portafolio y [slug]/ ficha plana del proyecto
 │   ├── cotizaciones/[token]/   # Vista pública de la cotización por token
 │   ├── propuestas/[token]/     # Visor privado de propuesta compartida con cliente
 │   ├── staff/                  # Panel staff (layout.tsx + role sections + aliases legacy)
 │   │   ├── login/              # Login (exento de middleware)
 │   │   ├── administracion/     # admin-only (cotizaciones, usuarios, portafolio)
 │   │   ├── gestion/            # asesor+admin (agenda, citas, clientes, proyectos)
-│   │   └── diseno/             # disenador+admin (proyectos, productos, propuestas, visores)
+│   │   └── diseno/             # disenador+admin (proyectos, productos, propuestas)
 │   ├── historia/               # Historia de la marca
-│   ├── sitemap.ts              # 6 URLs estáticas (las páginas de proyecto son dinámicas)
+│   ├── sitemap.ts              # 5 URLs estáticas (las páginas de proyecto son dinámicas)
 │   ├── globals.css             # Design tokens + utilities (única hoja de estilos global)
 │   ├── layout.tsx              # Root layout (fuentes, theme provider, analytics)
 │   └── page.tsx                # Landing pública
 ├── components/
 │   ├── tonfort/                # Componentes de dominio (VideoViewer, agenda, portafolio, landing)
 │   │   ├── landing/            # Secciones de la landing (hero, luz, proyectos-recientes, equipo, agenda-cta)
-│   │   ├── agenda/             # Flujo público de cita
+│   │   ├── agenda/             # Flujo público de cita + grilla compartida con staff
+│   │   │   ├── grilla-bloques.tsx        # Retícula 4 bloques x Lun-Sáb (público y staff)
+│   │   │   ├── calendario.tsx            # Vista pública de la retícula (delega en grilla-bloques)
+│   │   │   ├── dialogo-bloque.tsx # Detalle del bloque: citas + confirmación/mover
+│   │   │   ├── agenda-horario.tsx        # Paso 2: grilla + formulario
+│   │   │   ├── formulario-cita.tsx       # Formulario público (nombre, teléfono, descripción)
+│   │   │   └── selector-modalidad.tsx    # Paso 1: elección de modalidad
 │   │   └── staff/              # Formularios y editores del panel (cliente-form, proyecto-fotos, visores-landing-editor)
 │   └── ui/                     # Primitivas shadcn/ui
 ├── content/                    # Contenido estático (historia.ts, landing.ts, sede.ts)
 ├── cotizacion/                 # Herramienta standalone pendiente de extracción a repo independiente
-├── fotos_proyectos_anttiguos/  # 41 fotos sin clasificar — HOLD abierto (ver docs/05_auditoria.md §5)
-├── hooks/                      # Hooks de React (use-mobile, use-toast)
-├── infra/                      # Despliegue único punto
+├── hooks/                      # Hooks de React (use-mobile, use-toast, use-bloques-libres)
+├── infra/                      # Despliegue + seed
 │   ├── Caddyfile
 │   ├── docker-compose.yml
-│   └── scripts/                # Scripts VPS + DB (check-tables, reset-and-seed, vps-deploy)
+│   ├── scripts/                # Scripts VPS + DB (check-tables, reset-and-seed, reinit, vps-deploy)
+│   └── seed/
+│       └── portafolio-bogota/  # Set base versionado: manifest.csv + 190 carpetas NNN-slug/ (298 MB)
 ├── lib/                        # Lógica de negocio
 │   ├── supabase/               # Cliente Supabase + tipos
 │   │   ├── types.ts            # Tipos de dominio y catálogos cerrados (SEDES, CATEGORIAS_MUEBLE, SLUG_SEDE)
@@ -77,7 +84,9 @@ de este repo.
 │   ├── staff-auth.ts           # Helpers Next.js (requireStaff, requireRol, getSesionServer)
 │   ├── staff-client.ts         # Cliente API para el panel staff
 │   ├── citas-service.ts        # Servicio de citas (CRUD + agenda + modalidades)
-│   ├── agenda.ts               # Generación de slots y bloques horarios
+│   ├── agenda.ts               # Slots, bloques y aritmética UTC compartida
+│   │                          #   (inicioSemana, celdasDeSemana, slotKey) — usada por
+│   │                          #   el calendario público y por la agenda de staff
 │   ├── agenda-format.ts        # Helpers de formato de fecha/hora de la agenda
 │   ├── portfolio-service.ts    # Servicio de portafolio público (filtros sede/categoría, visores de landing)
 │   ├── proyectos-service.ts    # Servicio de proyectos del panel de diseño
@@ -116,11 +125,11 @@ Estado verificado sobre `app/` tras el refactor del espacio público. Detalle co
 
 | Ruta | Tipo | Descripción |
 |---|---|---|
-| `/` | Server Component | Landing (hero, 2 visores `LandingVisor`, luz, proyectos recientes, equipo, CTA de agenda) |
+| `/` | Server Component | Landing (hero, luz, carrusel `VisoresCarousel`, proyectos recientes, equipo, CTA de agenda) |
 | `/sede` | Server Component | Página de la sede con datos de `lib/contact.ts` |
 | `/historia` | Server Component | Historia y filosofía de la marca |
-| `/portafolio` | redirect 307 | Alias de `/portafolio/santa-marta` |
-| `/portafolio/[sede]` | Server Component (`force-dynamic`) | Catálogo de la sede, con filtro `?categoria=` |
+| `/portafolio` | Server Component (`force-dynamic`) | Catálogo único con una lista por sede (Santa Marta, Bogotá) y filtro `?categoria=` |
+| `/portafolio/[sede]` | redirect 308 | Redirige a `/portafolio` (conserva `?categoria=`): el catálogo ya no se parte por sede |
 | `/portafolio/[sede]/[slug]` | Server Component (`force-dynamic`) | Ficha plana: portada, galería y visor opcional |
 | `/agenda` | redirect 307 | Redirige a `/agenda/modalidad` |
 | `/agenda/modalidad` | Server Component | Paso 1: modalidad + diseñador |
@@ -130,10 +139,11 @@ Estado verificado sobre `app/` tras el refactor del espacio público. Detalle co
 | `/propuestas/[token]` | Client Component | Enlace privado cliente con visor `VideoViewer` |
 | `/cotizaciones/[token]` | Server Component | Cotización pública por token |
 | `/proyectos` | redirect 307 | Legacy: a `/portafolio` |
-| `/sitemap.xml` | Metadata route | 6 URLs estáticas |
+| `/sitemap.xml` | Metadata route | 5 URLs estáticas |
 | `/staff/login` | Client Component | Login de staff (exento de middleware) |
 
-El portafolio público ya **no** tiene subárbol de productos: es plano y se publica por sede.
+El portafolio público ya **no** tiene subárbol de productos: es plano, y el catálogo es una sola
+página con las dos listas por sede (`/portafolio/[sede]` redirige a `/portafolio`).
 Las rutas `/portafolio/proyectos/[slug]/**` están eliminadas.
 
 ---
@@ -175,10 +185,10 @@ No forman parte del flujo activo.
 | `PATCH`/`PUT`/`DELETE` | `/api/staff/citas/[id]` | admin\|asesor | Acciones de cita y edición de campos (incluye `direccion`) |
 | `GET`/`POST` | `/api/staff/usuarios` | admin | Lista y crea usuarios staff (asesor/disenador) |
 | `GET`/`PUT`/`DELETE` | `/api/staff/usuarios/[id]` | admin | Edición y desactivación de staff |
-| `GET` | `/api/staff/diseno/visores-landing` | admin\|disenador | Lista los 2 visores de la landing |
-| `PUT` | `/api/staff/diseno/visores-landing` | admin | Upsert por `slot` |
-| `GET`/`POST` | `/api/staff/diseno/visores-landing/[slot]/animaciones` | admin\|disenador | Lista y crea animaciones del visor |
-| `POST` | `/api/staff/diseno/visores-landing/[slot]/upload-global-video` | admin\|disenador | Sube el video global del visor |
+| `GET`/`POST` | `/api/staff/administracion/visores-landing` | admin | Lista los visores del carrusel / crea uno al final |
+| `PATCH`/`DELETE` | `/api/staff/administracion/visores-landing/[id]` | admin | Edita (o reordena) y elimina un visor |
+| `GET`/`POST` | `/api/staff/administracion/visores-landing/[id]/animaciones` | admin | Lista y crea animaciones del visor |
+| `POST` | `/api/staff/administracion/visores-landing/[id]/upload-global-video` | admin | Sube el video global del visor |
 | `GET`/`POST` | `/api/staff/diseno/proyectos` | admin\|disenador | Proyectos para taller de diseño (sin cliente directo) |
 | `GET`/`PATCH`/`DELETE` | `/api/staff/diseno/proyectos/[id]` | admin\|disenador | Detalle, edición y borrado de proyecto de diseño |
 | `GET`/`POST` | `.../productos` | admin\|disenador | Productos del proyecto |

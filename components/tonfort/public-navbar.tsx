@@ -17,7 +17,7 @@ interface NavItem {
 // portafolio y la CTA cubre la entrada a la agenda.
 const LINKS: NavItem[] = [
   { label: "Sede", href: "/sede" },
-  { label: "Portafolio", href: "/portafolio/santa-marta" },
+  { label: "Portafolio", href: "/portafolio" },
   { label: "Historia", href: "/historia" },
 ]
 
@@ -43,7 +43,8 @@ export function PublicNavbar({ tone = "dark" }: { tone?: Tone }) {
 
   const close = () => setOpen(false)
 
-  // `/portafolio/bogota` también marca activo el link de Portafolio.
+  // El portafolio es una sola página con las dos sedes, así que las fichas
+  // `/portafolio/[sede]/[slug]` también marcan activo el link de Portafolio.
   const esActivo = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`)
 
@@ -53,15 +54,18 @@ export function PublicNavbar({ tone = "dark" }: { tone?: Tone }) {
       : `text-sm transition ${activo ? "text-white" : "text-copy hover:text-white"}`
 
   // La CTA es viva (no translúcida) y con glow: es el punto de entrada.
+  // En claro el CTA usa el azul marca (`--primary` = #0B1D3A), no el `--royal`
+  // vivo: blanco sobre azul real (~4.3:1) dejaba de leerse. Blanco sobre navy
+  // ronda 14:1 y mantiene el glow de acento.
   const claseCta = light
-    ? "bg-royal text-white shadow-[0_0_24px_rgba(40,86,199,.28)] hover:bg-[#1c46a8]"
+    ? "bg-brand-navy text-white shadow-[0_0_24px_rgba(11,29,58,.30)] hover:bg-[#06101f]"
     : "bg-royal-bright text-black shadow-[0_0_28px_rgba(55,105,230,.35)] hover:bg-royal hover:text-white"
 
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
         light
-          ? "bg-muted/85 backdrop-blur-2xl"
+          ? "border-b border-border bg-white/90 backdrop-blur-2xl"
           : scrolled
             ? "bg-black/65 backdrop-blur-2xl"
             : "bg-black/15"

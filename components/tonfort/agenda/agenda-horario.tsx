@@ -6,8 +6,10 @@ import { ArrowLeft } from "lucide-react"
 import { Calendario, type BloqueSemana } from "@/components/tonfort/agenda/calendario"
 import { FormularioCita } from "@/components/tonfort/agenda/formulario-cita"
 import { formatPrecio, formatearFechaLarga } from "@/lib/agenda-format"
+import { slotKey } from "@/lib/agenda"
 
 interface Seleccion {
+  clave: string
   fechaIso: string
   bloque: string
   resumen: string
@@ -25,7 +27,9 @@ export function AgendaHorario({
   const [seleccionado, setSeleccionado] = useState<Seleccion | null>(null)
 
   function manejarSeleccion(fechaIso: string, bloque: string) {
+    const clave = slotKey(new Date(fechaIso))
     setSeleccionado({
+      clave,
       fechaIso,
       bloque,
       resumen: `${formatearFechaLarga(new Date(fechaIso))}, ${bloque}`,
@@ -37,7 +41,7 @@ export function AgendaHorario({
       {/* Misma retícula y proporción que la página 1: el calendario reemplaza al
           video, el formulario queda donde estaba la selección. */}
       <div className="lg:grid lg:grid-cols-12 lg:gap-14">
-        <div className="lg:col-span-6 lg:sticky lg:top-24 lg:self-start">
+        <div className="lg:col-span-8 lg:sticky lg:top-24 lg:self-start">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <div className="inline-flex items-center gap-2 rounded-full bg-[#2856c7]/[.07] px-4 py-2">
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#0B1D3A]">
@@ -60,12 +64,12 @@ export function AgendaHorario({
             modalidadId={modalidadSlug}
             modalidadSlug={modalidadSlug}
             inicial={slotsIniciales}
-            seleccionado={seleccionado?.fechaIso ?? null}
+            seleccionado={seleccionado?.clave ?? null}
             onSelect={manejarSeleccion}
           />
         </div>
 
-        <div className="mt-12 lg:col-span-6 lg:mt-0">
+        <div className="mt-12 lg:col-span-4 lg:mt-0">
           <h1 className="font-sans text-3xl font-bold leading-tight tracking-[-0.02em] text-[#0B1D3A] md:text-4xl">
             Elige día y hora
           </h1>

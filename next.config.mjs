@@ -17,6 +17,14 @@ const nextConfig = {
   },
   images: {
     unoptimized: false,
+    // AVIF primero: el PNG de origen son 334 KB-918 KB y el PNG más pesado cae
+    // por debajo de 200 KB servido en AVIF.
+    formats: ["image/avif", "image/webp"],
+    // 1920 es el peldaño que pide el hero a pantalla completa. El asset actual
+    // (`tonfort-hero-wall.png`) es de 1024², así que por encima de 1024 el
+    // optimizador sirve el original escalado: el fix real necesita el asset a
+    // ≥1920 px de ancho.
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 2560],
     remotePatterns: [
       {
         protocol: "https",

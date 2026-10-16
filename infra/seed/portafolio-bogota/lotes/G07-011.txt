@@ -1,0 +1,5 @@
+1	COCINAS/OTRAS/16681665_1410044995680551_2048599228227355612_n.jpg	marketing	1668-16-65	922x922
+2	COCINAS/OTRAS/cocinas modernas en medellin.jpg	marketing		734x411
+3	COCINAS/OTRAS/cocinas-integrales-modernas-pequeñas.jpg	marketing		640x360
+4	COCINAS/OTRAS/d8c2a06fc40b034d824df21053ba5eb9.jpg	marketing		236x177
+5	COCINAS/OTRAS/venta-de-cocinas-integrales-en-bogota_8a41de3_3.jpg	marketing		625x469

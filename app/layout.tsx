@@ -18,7 +18,13 @@ const montserrat = Montserrat({
   variable: '--font-montserrat'
 });
 
+// `app/sitemap.ts` resuelve el mismo dominio. Con `metadataBase` las URLs
+// relativas de Open Graph (p. ej. `/sede/hero-sede.png`) se resuelven contra el
+// dominio canónico en lugar del origen del build.
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tonfort.co"
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: 'Tonfort — Diseño de espacios y mobiliario a medida',
   description: 'No diseñamos muebles, diseñamos espacios. Cocinas, closets, muebles de TV y puertas a medida con soluciones de iluminación integradas. Vendemos la experiencia de habitar un espacio.',
   icons: {

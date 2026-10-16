@@ -1,0 +1,7 @@
+1	RENDERS/2.jpg	plano		1600x900
+2	RENDERS/3.jpg	plano		1600x900
+3	RENDERS/4.jpg	plano		1600x900
+4	RENDERS/5.jpg	plano		1600x900
+5	RENDERS/6.jpg	plano		1368x768
+6	RENDERS/7.jpg	plano		1368x768
+7	RENDERS/8.jpg	plano		1368x768

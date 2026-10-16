@@ -38,12 +38,15 @@ export interface VisorProyecto {
   video_global_url: string
   frame_centro_ms: number
   animaciones: Propuesta3DAnimacion[]
+  // Metadatos de la propuesta elegida, para el encabezado de la sección.
+  titulo: string | null
+  descripcion: string | null
 }
 
 export interface ProyectoPublicoCompleto {
   proyecto: ProyectoResumen
   fotos: ProyectoFoto[]
-  visor: VisorProyecto | null
+  visores: VisorProyecto[]
 }
 
 export interface FiltrosProyectosPublicados {
@@ -100,8 +103,9 @@ export async function getProyectosPublicados(
   return (data as ProyectoResumenCrudo[]).map(toResumen)
 }
 
-// Proyecto publicado completo: fotos y, para la sede de Santa Marta, el visor 3D
-// de la primera propuesta publicada. `visor` es `null` cuando no hay.
+// Proyecto publicado completo: fotos y, para Santa Marta, los visores 3D que el
+// admin seleccionó desde las propuestas del diseñador. `visores` es `[]` cuando
+// no hay ninguno configurado (o la sede es Bogotá, que es histórica).
 export async function getProyectoPublicadoPlano(slug: string): Promise<ProyectoPublicoCompleto | null> {
   const supabase = getServiceSupabase()
   if (!supabase) return null
@@ -126,19 +130,94 @@ export async function getProyectoPublicadoPlano(slug: string): Promise<ProyectoP
   const fotos = (fotosRaw ?? []) as ProyectoFoto[]
 
   // La sede de Bogotá es histórica: no tiene visor, solo fotos.
-  const visor = proyecto.sede === "santa_marta" ? await getVisorProyecto(supabase, proyecto.id) : null
+  const visores =
+    proyecto.sede === "santa_marta" ? await getVisoresProyecto(supabase, proyecto.id) : []
 
-  return { proyecto, fotos, visor }
+  return { proyecto, fotos, visores }
 }
 
-async function getVisorProyecto(
+// Visores configurados en `proyectos_visores`, en su orden. Cada uno resuelve el
+// video y las animaciones de la propuesta elegida.
+//
+// "Sin filas" (nadie configuró visores, o la tabla aún no existe) cae al
+// comportamiento anterior de mostrar la primera propuesta publicada. En cambio
+// "hay filas pero todas ocultas" es una decisión explícita del admin y se
+// respeta: no se muestra ningún visor.
+async function getVisoresProyecto(
+  supabase: NonNullable<ReturnType<typeof getServiceSupabase>>,
+  proyectoId: string,
+): Promise<VisorProyecto[]> {
+  const { data: existentes, error: errorExistentes } = await supabase
+    .from("proyectos_visores")
+    .select("id")
+    .eq("proyecto_id", proyectoId)
+    .limit(1)
+
+  if (errorExistentes) {
+    // Tabla ausente (migración pendiente) o RLS: se degrada al legado en el
+    // primer caso y se deja constancia en los demás, para que una migración
+    // fallida no pase desapercibida.
+    const ausente = /does not exist|PGRST205|42P01/i.test(
+      `${errorExistentes.message ?? ""} ${errorExistentes.code ?? ""}`,
+    )
+    if (!ausente) {
+      console.error("[getVisoresProyecto] tabla proyectos_visores:", errorExistentes.message)
+    }
+    const legacy = await getVisorProyectoLegacy(supabase, proyectoId)
+    return legacy ? [legacy] : []
+  }
+
+  if (!existentes || existentes.length === 0) {
+    return []
+  }
+
+  const { data: visoresRaw, error } = await supabase
+    .from("proyectos_visores")
+    .select(`
+      propuesta:propuestas_3d!inner(
+        id, titulo, descripcion, video_global_url, frame_centro_ms,
+        animaciones:propuestas_3d_animaciones(*)
+      )
+    `)
+    .eq("proyecto_id", proyectoId)
+    .eq("activo", true)
+    .order("orden", { ascending: true })
+
+  if (error) {
+    console.error("[getVisoresProyecto] visores activos:", error.message)
+    return []
+  }
+
+  return (visoresRaw ?? [])
+    .map((row) => {
+      const propuesta = row.propuesta as unknown as {
+        titulo: string | null
+        descripcion: string | null
+        video_global_url: string | null
+        frame_centro_ms: number | null
+        animaciones: Propuesta3DAnimacion[] | null
+      } | null
+      if (!propuesta?.video_global_url) return null
+      return {
+        video_global_url: propuesta.video_global_url,
+        frame_centro_ms: propuesta.frame_centro_ms ?? 0,
+        animaciones: (propuesta.animaciones ?? []) as Propuesta3DAnimacion[],
+        titulo: propuesta.titulo,
+        descripcion: propuesta.descripcion,
+      }
+    })
+    .filter((v): v is VisorProyecto => v !== null)
+}
+
+// Visor por omisión: la primera propuesta publicada del proyecto.
+async function getVisorProyectoLegacy(
   supabase: NonNullable<ReturnType<typeof getServiceSupabase>>,
   proyectoId: string,
 ): Promise<VisorProyecto | null> {
   const { data: propuestasRaw, error } = await supabase
     .from("propuestas_3d")
     .select(
-      "id, video_global_url, frame_centro_ms, producto:productos!inner(proyecto_id)",
+      "id, titulo, descripcion, video_global_url, frame_centro_ms, producto:productos!inner(proyecto_id)",
     )
     .eq("publicada_portafolio", true)
     .eq("estado", "enviada")
@@ -150,6 +229,8 @@ async function getVisorProyecto(
 
   const row = propuestasRaw[0] as unknown as {
     id: string
+    titulo: string | null
+    descripcion: string | null
     video_global_url: string | null
     frame_centro_ms: number | null
   }
@@ -167,6 +248,8 @@ async function getVisorProyecto(
     video_global_url: row.video_global_url,
     frame_centro_ms: row.frame_centro_ms ?? 0,
     animaciones: (animacionesRaw ?? []) as Propuesta3DAnimacion[],
+    titulo: row.titulo,
+    descripcion: row.descripcion,
   }
 }
 
@@ -191,13 +274,8 @@ export async function getVisoresLandingActivos(): Promise<VisorLandingConAnimaci
   }))
 }
 
-// Un visor de la landing por slot. `null` si el slot no tiene fila activa.
-export async function getVisorLandingPorSlot(
-  slot: "primero" | "segundo",
-): Promise<VisorLandingConAnimaciones | null> {
-  const visores = await getVisoresLandingActivos()
-  return visores.find((v) => v.slot === slot) ?? null
-}
+// `getVisorLandingPorSlot` se eliminó con el carrusel: el carrusel consume la
+// lista completa de `getVisoresLandingActivos` y ordena por `orden`.
 
 // ==========================================
 // Link privado de propuesta (se conserva)

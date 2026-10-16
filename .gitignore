@@ -21,3 +21,15 @@ node_modules
 tsconfig.tsbuildinfo
 *.tsbuildinfo
 *.eslintcache
+
+# Set base del portafolio: se versiona `infra/seed/portafolio-bogota/`
+# (manifest + las 190 carpetas NNN-*), NO los CSV de staging que se regeneran
+# en cada pasada ni el archivo crudo del que salió el manifest.
+Carpinteria Antigua/
+fotos_proyectos_anttiguos/
+infra/seed/portafolio-bogota/manifest.estado.csv
+infra/seed/portafolio-bogota/inventario.csv
+infra/seed/portafolio-bogota/clasificacion.csv
+infra/seed/portafolio-bogota/dedup.csv
+infra/seed/portafolio-bogota/descartes.csv
+infra/seed/portafolio-bogota/proyectos.csv

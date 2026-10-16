@@ -2,6 +2,7 @@ import Image from "next/image"
 import { MapPin, MessageCircle, Navigation, Clock, Phone, Mail } from "lucide-react"
 import { PublicNavbar } from "@/components/tonfort/public-navbar"
 import { PublicFooter } from "@/components/tonfort/public-footer"
+import { SedeMapa } from "@/components/tonfort/sede-mapa"
 import { ButtonLink, GradientText, ParallaxImage, Reveal } from "@/components/tonfort/public-animations"
 import { SEDE, SEDE_PENDIENTE_DATOS } from "@/lib/contact"
 import { SEDE_DATOS, SEDE_FOTOS, SEDE_HERO, SEDE_PUNTOS, SEDE_VIDEO } from "@/content/sede"
@@ -19,17 +20,18 @@ const ICONO_DATO = {
 
 export default function SedePage() {
   const ancha = SEDE_FOTOS.find((f) => f.layout === "ancho")
-  const cuadradas = SEDE_FOTOS.filter((f) => f.layout === "cuadro")
+  const cuadros = SEDE_FOTOS.filter((f) => f.layout === "cuadro")
+  const cuadradas = SEDE_FOTOS.filter((f) => f.layout === "cuadrado")
 
   return (
     <main className="bg-black">
       <PublicNavbar />
 
       {/* 1. Hero a sangre */}
-      <section className="relative flex min-h-[80svh] w-full items-end overflow-hidden bg-black">
+      <section className="relative flex min-h-[100svh] w-full items-end overflow-hidden bg-black">
         <Image
-          src="/sede/hero.png"
-          alt="Fachada del taller de Tonfort en Santa Marta"
+          src={SEDE_HERO.src}
+          alt={SEDE_HERO.alt}
           fill
           priority
           sizes="100vw"
@@ -37,9 +39,6 @@ export default function SedePage() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/25" />
         <div className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-16 pt-32 md:px-10 md:pb-20">
-          <p className="mb-5 text-xs uppercase tracking-[0.34em] text-[#3769e6]">
-            {SEDE_HERO.eyebrow}
-          </p>
           <h1 className="max-w-4xl text-[clamp(2.75rem,7vw,6rem)] font-medium leading-[0.92] tracking-[-0.06em] text-white">
             {SEDE_HERO.tituloLineas.map((linea, i) => (
               <span key={linea} className="block">
@@ -51,9 +50,6 @@ export default function SedePage() {
               </span>
             ))}
           </h1>
-          <p className="mt-6 max-w-md text-base leading-7 text-[#a1a1a6] md:text-lg">
-            {SEDE_HERO.subtitulo}
-          </p>
         </div>
       </section>
 
@@ -76,25 +72,55 @@ export default function SedePage() {
       <section className="px-6 py-20 md:px-10 md:py-28">
         <div className="mx-auto max-w-7xl">
           {ancha && (
-            <div className="overflow-hidden rounded-2xl">
+            <div className="group relative overflow-hidden rounded-2xl ring-1 ring-white/10 transition duration-500 hover:ring-white/25">
               <ParallaxImage
                 src={ancha.src}
                 alt={ancha.alt}
+                sizes="100vw"
                 className="aspect-[16/10] w-full"
+                hover
               />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
             </div>
           )}
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
-            {cuadradas.map((foto) => (
-              <div key={foto.src} className="overflow-hidden rounded-2xl">
-                <ParallaxImage
-                  src={foto.src}
-                  alt={foto.alt}
-                  className="aspect-[4/5] w-full"
-                />
-              </div>
-            ))}
-          </div>
+          {cuadros.length > 0 && (
+            <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {cuadros.map((foto) => (
+                <div
+                  key={foto.src}
+                  className="group relative overflow-hidden rounded-2xl ring-1 ring-white/10 transition duration-500 hover:ring-white/25"
+                >
+                  <ParallaxImage
+                    src={foto.src}
+                    alt={foto.alt}
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="aspect-[4/5] w-full"
+                    hover
+                  />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                </div>
+              ))}
+            </div>
+          )}
+          {cuadradas.length > 0 && (
+            <div className="mt-6 grid gap-6 sm:grid-cols-2">
+              {cuadradas.map((foto) => (
+                <div
+                  key={foto.src}
+                  className="group relative overflow-hidden rounded-2xl ring-1 ring-white/10 transition duration-500 hover:ring-white/25"
+                >
+                  <ParallaxImage
+                    src={foto.src}
+                    alt={foto.alt}
+                    sizes="(max-width: 640px) 100vw, 50vw"
+                    className="aspect-square w-full"
+                    hover
+                  />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -140,15 +166,7 @@ export default function SedePage() {
       {/* 5. Mapa */}
       <section className="px-6 pb-20 md:px-10 md:pb-28">
         <div className="mx-auto max-w-5xl">
-          <div className="aspect-[16/10] overflow-hidden rounded-2xl border border-white/10">
-            <iframe
-              src={SEDE.mapsEmbedUrl}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              title="Ubicación de la sede de Tonfort en Santa Marta"
-              className="size-full"
-            />
-          </div>
+          <SedeMapa embedUrl={SEDE.mapsEmbedUrl} direccion={SEDE.direccion} />
 
           {SEDE_PENDIENTE_DATOS && process.env.NODE_ENV === "development" && (
             <p

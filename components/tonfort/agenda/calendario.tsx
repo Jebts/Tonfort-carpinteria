@@ -1,43 +1,41 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { addDays, addWeeks, format, isSameDay, startOfWeek } from "date-fns"
-import { es } from "date-fns/locale"
+import { addDays } from "date-fns"
 import { motion } from "motion/react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { BLOQUES, DIAS_LABORALES, slotKey } from "@/lib/agenda"
+import { BLOQUES, DIAS_CORTOS, celdasDeSemana, colorTipoCita, inicioSemana, slotKey } from "@/lib/agenda"
+import { formatearRangoSemana } from "@/lib/agenda-format"
 import { cn } from "@/lib/utils"
-import type { EstadoSlot } from "@/lib/supabase/types"
-
-const DIAS_CORTOS = [
-  { dow: 1, label: "Lun" },
-  { dow: 2, label: "Mar" },
-  { dow: 3, label: "Mié" },
-  { dow: 4, label: "Jue" },
-  { dow: 5, label: "Vie" },
-  { dow: 6, label: "Sáb" },
-]
+import type { EstadoSlot, EstadoCita } from "@/lib/supabase/types"
+import { GrillaBloques } from "@/components/tonfort/agenda/grilla-bloques"
 
 export interface BloqueSemana {
   fecha_hora: string
   estado: EstadoSlot
+  /** Citas del slot (solo la misma modalidad que la vista). `esMio` marca las
+      * del propio visitante (mismo IP) para pintar "tu cita" sin filtrar
+      * datos de otros solicitantes. */
+  citas?: { id: string; estado: EstadoCita; esMio: boolean }[]
+  /** Citas en espera del bloque (contador, sin datos). */
+  enEspera?: number
+  /** Citas canceladas del bloque (contador, sin datos). */
+  canceladas?: number
 }
 
 export interface CalendarioProps {
   modalidadId: string
   modalidadSlug: string
   inicial?: BloqueSemana[]
+  /** Clave del slot seleccionado en formato `slotKey` (`yyyy-MM-dd HH:mm`).
+      * No usar ISO: `agenda-horario.tsx` la convierte antes de pasarla. */
   seleccionado: string | null
   onSelect: (fechaIso: string, bloque: string) => void
 }
 
-// Lunes de la semana actual. Todo se calcula en UTC, que es como `lib/agenda`
-// genera los slots y como se guardan las citas.
-function inicioSemana(base: Date): Date {
-  const d = startOfWeek(base, { weekStartsOn: 1 })
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
-}
-
+// La semana y las celdas salen de `lib/agenda` (`inicioSemana`/`celdasDeSemana`):
+// todo el flujo se calcula en UTC, que es como se generan los slots y se
+// guardan las citas. La retícula es la compartida con la agenda de staff
+// (`GrillaBloques`); aquí solo se pinta el contenido público de cada celda.
 export function Calendario({
   modalidadId,
   modalidadSlug,
@@ -64,8 +62,8 @@ export function Calendario({
       const data = (await res.json()) as { slots: BloqueSemana[] }
       setBloques(data.slots ?? [])
     } catch {
-      // La grilla queda vacía: mejor que mostrar disponibilidad inventada.
-      setBloques([])
+      // Se conserva lo último válido (los slots del servidor). Vaciar la grilla
+      // haría ver como libres los bloques que sí están ocupados.
     } finally {
       setCargando(false)
     }
@@ -76,144 +74,135 @@ export function Calendario({
   }, [cargar])
 
   const estadoPorClave = useMemo(() => {
-    const mapa = new Map<string, EstadoSlot>()
+    const mapa = new Map<
+      string,
+      { estado: EstadoSlot; mio: boolean; enEspera: number; canceladas: number }
+    >()
     for (const b of bloques) {
-      mapa.set(slotKey(new Date(b.fecha_hora)), b.estado)
+      mapa.set(slotKey(new Date(b.fecha_hora)), {
+        estado: b.estado,
+        // El servidor marca `esMio` por cita (mismo IP): es la única señal.
+        mio: (b.citas ?? []).some((c) => c.esMio),
+        enEspera:
+          b.enEspera ?? (b.citas ?? []).filter((c) => c.estado === "en_espera").length,
+        canceladas: b.canceladas ?? 0,
+      })
     }
     return mapa
   }, [bloques])
 
-  const encabezado = useMemo(() => {
-    const fin = addDays(semana, 6)
-    const mismoMes = semana.getUTCMonth() === fin.getUTCMonth()
-    const izq = `${semana.getUTCDate()} de ${format(semana, "MMMM", { locale: es })}`
-    const der = mismoMes
-      ? `${fin.getUTCDate()} de ${format(fin, "MMMM", { locale: es })}`
-      : `${fin.getUTCDate()} de ${format(fin, "MMMM", { locale: es })}`
-    return `Semana del ${izq} al ${der}`
-  }, [semana])
+  const celdas = useMemo(
+    () => celdasDeSemana(semana, estadoPorClave),
+    [semana, estadoPorClave],
+  )
+
+  const moverSemana = useCallback((semanas: number) => {
+    setSemana((s) =>
+      new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate() + semanas * 7)),
+    )
+  }, [])
 
   const ahora = new Date()
+  const hoyUTC = ahora.getUTCFullYear() * 10000 + ahora.getUTCMonth() * 100 + ahora.getUTCDate()
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => setSemana(addWeeks(semana, -1))}
-          aria-label="Semana anterior"
-          className="rounded-full border border-border p-2 text-[#0B1D3A] transition hover:bg-white active:scale-95"
-        >
-          <ChevronLeft className="size-4" />
-        </button>
-        <p className="text-sm font-semibold capitalize text-[#0B1D3A]" aria-live="polite">
-          {encabezado}
-        </p>
-        <button
-          type="button"
-          onClick={() => setSemana(addWeeks(semana, 1))}
-          aria-label="Semana siguiente"
-          className="rounded-full border border-border p-2 text-[#0B1D3A] transition hover:bg-white active:scale-95"
-        >
-          <ChevronRight className="size-4" />
-        </button>
-      </div>
+    <GrillaBloques
+      titulo={`Semana del ${formatearRangoSemana(semana)}`}
+      celdas={celdas}
+      onAnterior={() => moverSemana(-1)}
+      onSiguiente={() => moverSemana(1)}
+      cargando={cargando}
+      renderCelda={(celda) => {
+        const info = estadoPorClave.get(celda.clave)
+        const estado = info?.estado
+        const esMio = Boolean(info?.mio)
+        const enEspera = info?.enEspera ?? 0
+        const canceladas = info?.canceladas ?? 0
+        const dia = DIAS_CORTOS.find((d) => d.dow === celda.fecha.getUTCDay())
 
-      {cargando && (
-        <p className="mb-3 text-xs text-[#0B1D3A]/50" aria-live="polite">
-          Consultando disponibilidad…
-        </p>
-      )}
+        // El estado se resolvió solo para la modalidad elegida: un bloque
+        // con cita `virtual` sigue libre para quien eligió `presencial`.
+        // **Solo una cita confirmada (`aceptada`) ocupa el bloque**: mientras
+        // la solicitud siga `en_espera` el público puede seguir pidiendo el
+        // mismo hueco (es lo mismo que valida `validarSlotLibre`).
+        const confirmada = estado === "aceptada"
+        const bloqueado = celda.pasado || confirmada
+        // `seleccionado` ya viene en formato `slotKey` (ver
+        // `agenda-horario.tsx`): comparar directo. No se puede reparsear
+        // con `new Date()` porque `slotKey` no es ISO y se leería en hora
+        // local, desplazando la clave horas según la zona del visitante.
+        const esSeleccionado = seleccionado === celda.clave
+        const esHoy =
+          celda.fecha.getUTCFullYear() * 10000 +
+            celda.fecha.getUTCMonth() * 100 +
+            celda.fecha.getUTCDate() ===
+          hoyUTC
+        const etiqueta = esMio
+          ? "Tu cita"
+          : confirmada
+            ? "Ocupado"
+            : esHoy
+              ? "Hoy"
+              : ""
+        // El círculo toma el color del tipo de cita que se está viendo.
+        const tipo = colorTipoCita(modalidadSlug)
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-white">
-        {/* Encabezados de día */}
-        <div
-          className="grid border-b border-border"
-          style={{ gridTemplateColumns: `4rem repeat(${DIAS_CORTOS.length}, minmax(0, 1fr))` }}
-        >
-          <div aria-hidden />
-          {DIAS_CORTOS.map((dia) => {
-            const fecha = new Date(
-              Date.UTC(semana.getUTCFullYear(), semana.getUTCMonth(), semana.getUTCDate() + (dia.dow - 1)),
-            )
-            return (
-              <div key={dia.dow} className="px-2 py-3 text-center">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-[#0B1D3A]/50">
-                  {dia.label}
-                </p>
-                <p className="mt-0.5 text-sm font-semibold text-[#0B1D3A]">
-                  {fecha.getUTCDate()}
-                </p>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Filas por bloque horario */}
-        {BLOQUES.map((bloque) => (
-          <div
-            key={bloque.inicio}
-            className="grid border-b border-border last:border-b-0"
-            style={{ gridTemplateColumns: `4rem repeat(${DIAS_CORTOS.length}, minmax(0, 1fr))` }}
+        return (
+          <motion.button
+            type="button"
+            whileTap={bloqueado ? undefined : { scale: 0.97 }}
+            disabled={bloqueado}
+            onClick={() => onSelect(celda.fecha.toISOString(), labelBloque(celda.fecha))}
+            aria-label={`${dia?.label ?? ""} ${celda.fecha.getUTCDate()}, ${labelBloque(
+              celda.fecha,
+            )}${esMio ? ", tu cita" : confirmada ? ", ocupado" : bloqueado ? ", no disponible" : ", disponible"}${
+              enEspera > 0 ? `, ${enEspera} en espera` : ""
+            }${canceladas > 0 ? `, ${canceladas} canceladas` : ""}`}
+            aria-pressed={esSeleccionado}
+            className={cn(
+              "flex h-12 w-full items-center justify-center gap-1 rounded-lg text-xs font-medium transition-all duration-200",
+              esSeleccionado
+                ? "bg-royal text-white"
+                : esMio
+                  ? "bg-royal/15 text-royal ring-1 ring-royal/40"
+                  : confirmada
+                    ? "cursor-not-allowed bg-input text-primary/25"
+                    : "bg-card text-primary hover:border hover:border-primary/30",
+            )}
           >
-            <div className="flex items-center justify-center border-r border-border px-1 text-[10px] text-[#0B1D3A]/50">
-              {bloque.inicio}
-            </div>
-
-            {DIAS_CORTOS.map((dia) => {
-              const fecha = new Date(
-                Date.UTC(
-                  semana.getUTCFullYear(),
-                  semana.getUTCMonth(),
-                  semana.getUTCDate() + (dia.dow - 1),
-                  Number(bloque.inicio.slice(0, 2)),
-                  Number(bloque.inicio.slice(3, 5)),
-                ),
-              )
-              const clave = slotKey(fecha)
-              const estado = estadoPorClave.get(clave)
-              const pasado = fecha.getTime() < ahora.getTime()
-
-              // El estado se resolvió solo para la modalidad elegida: un bloque
-              // con cita `virtual` sigue libre para quien eligió `presencial`.
-              const ocupado = estado === "aceptada" || estado === "en_espera"
-              const bloqueado = pasado || ocupado
-              const esSeleccionado = seleccionado === clave
-              const laborable = DIAS_LABORALES.includes(fecha.getUTCDay())
-
-              if (!laborable) {
-                return <div key={dia.dow} className="min-h-14 bg-[#F7F4EE]/60" />
-              }
-
-              return (
-                <div key={dia.dow} className="border-r border-border p-1 last:border-r-0">
-                  <motion.button
-                    type="button"
-                    whileTap={bloqueado ? undefined : { scale: 0.97 }}
-                    disabled={bloqueado}
-                    onClick={() => onSelect(fecha.toISOString(), `${bloque.inicio} – ${bloque.fin}`)}
-                    aria-label={`${dia.label} ${fecha.getUTCDate()}, ${bloque.label}${
-                      bloqueado ? ", no disponible" : ", disponible"
-                    }`}
-                    aria-pressed={esSeleccionado}
-                    className={cn(
-                      "flex h-12 w-full items-center justify-center rounded-lg text-xs font-medium transition-all duration-200",
-                      esSeleccionado
-                        ? "bg-[#2856c7] text-white"
-                        : bloqueado
-                          ? "cursor-not-allowed bg-[#F7F4EE] text-[#0B1D3A]/25"
-                          : "bg-white text-[#0B1D3A] hover:border hover:border-[#0B1D3A]/30",
-                      pasado && !esSeleccionado && "bg-[#F7F4EE] text-[#0B1D3A]/15",
-                    )}
-                  >
-                    {isSameDay(fecha, ahora) ? "Hoy" : ""}
-                  </motion.button>
-                </div>
-              )
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
+            {etiqueta && <span className="text-[10px]">{etiqueta}</span>}
+            <span className="flex items-center gap-1">
+              {enEspera > 0 && (
+                <span
+                  className={`inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold ring-2 ring-yellow-400 ${tipo.clase}`}
+                  title={`${enEspera} ${enEspera === 1 ? "cita en espera" : "citas en espera"} (${tipo.nombre})`}
+                >
+                  {enEspera}
+                </span>
+              )}
+              {canceladas > 0 && (
+                <span
+                  className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted-foreground/30 px-1 text-[9px] font-bold text-foreground"
+                  title={`${canceladas} ${canceladas === 1 ? "cita cancelada" : "citas canceladas"}`}
+                >
+                  {canceladas}
+                </span>
+              )}
+            </span>
+          </motion.button>
+        )
+      }}
+    />
   )
+}
+
+// Etiqueta del bloque ("08:00 – 10:00") leída de `BLOQUES`, que es la tabla que
+// el equipo puede ajustar: calcular el fin como `+2 h` aquí la dejaría desfasada
+// en cuanto cambie un bloque.
+function labelBloque(fecha: Date): string {
+  const inicio = `${fecha.getUTCHours().toString().padStart(2, "0")}:${fecha
+    .getUTCMinutes()
+    .toString()
+    .padStart(2, "0")}`
+  return BLOQUES.find((b) => b.inicio === inicio)?.label ?? inicio
 }

@@ -38,14 +38,15 @@ Incluye:
 ## Comandos
 
 ```bash
-npm run dev        # Servidor de desarrollo
-npm run build      # Build de producción (Next.js Turbopack)
-npm run start      # Iniciar servidor de producción
-npm run lint       # ESLint
-npm run typecheck  # TypeScript (tsc --noEmit)
-npm test           # Vitest (suite completa de pruebas)
-npm run db:check   # Verificación de tablas y buckets en Supabase
-npm run db:seed    # Reset y seed de datos demo
+npm run dev         # Servidor de desarrollo
+npm run build       # Build de producción (Next.js Turbopack)
+npm run start       # Iniciar servidor de producción
+npm run lint        # ESLint
+npm run typecheck   # TypeScript (tsc --noEmit)
+npm test            # Vitest (suite completa de pruebas)
+npm run db:check    # Verificación de tablas y buckets en Supabase
+npm run db:reinit   # Reset + seed demo + carga portafolio Bogotá (idempotente)
+npm run db:seed     # Reset y seed de datos demo
 ```
 
 ## Variables de Entorno

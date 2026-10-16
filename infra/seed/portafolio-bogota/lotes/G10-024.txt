@@ -1,0 +1,7 @@
+1	RENDERS/BAÑO/01 (2).jpg	marketing		1368x768
+2	RENDERS/BAÑO/02 (2).jpg	marketing		1368x768
+3	RENDERS/BAÑO/1 (18).jpg	marketing		1368x768
+4	RENDERS/BAÑO/3 (9).jpg	marketing		1368x768
+5	RENDERS/BAÑO/4 (6).jpg	marketing		1368x768
+6	RENDERS/BAÑO/B1.jpg	imagen		1368x768
+7	RENDERS/BAÑO/B2.jpg	imagen		1368x768

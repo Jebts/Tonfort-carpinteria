@@ -5,6 +5,8 @@ import {
   parseISO,
   format,
 } from "date-fns"
+import type { CitaEnSlot } from "@/lib/citas-service"
+import type { EstadoSlot } from "@/lib/supabase/types"
 
 // Configuración de la agenda de la carpintería.
 // Ajustable por el equipo: días y bloques de 120 min.
@@ -85,4 +87,99 @@ export function slotEnPasado(date: Date): boolean {
 
 export function enRango(d: Date, desde: Date, hasta: Date): boolean {
   return isWithinInterval(d, { start: desde, end: hasta })
+}
+
+// Lunes de la semana de `base`, en UTC. Todo el flujo de agenda (slots, citas,
+// grillas) se calcula en UTC, así que el inicio de semana también: con hora
+// local una fecha ya normalizada (medianoche UTC = domingo 19:00 en Bogotá)
+// devolvía el lunes de la semana anterior. La función es idempotente.
+export function inicioSemana(base: Date): Date {
+  const dow = base.getUTCDay() // 0 = domingo, 1 = lunes
+  const diasDesdeLunes = (dow + 6) % 7
+  return new Date(
+    Date.UTC(
+      base.getUTCFullYear(),
+      base.getUTCMonth(),
+      base.getUTCDate() - diasDesdeLunes,
+    ),
+  )
+}
+
+// Encabezados de la grilla compartida (web y staff).
+export const DIAS_CORTOS = [
+  { dow: 1, label: "Lun" },
+  { dow: 2, label: "Mar" },
+  { dow: 3, label: "Mié" },
+  { dow: 4, label: "Jue" },
+  { dow: 5, label: "Vie" },
+  { dow: 6, label: "Sáb" },
+] as const
+
+// Fecha UTC de una celda de la grilla: semana + día de la semana + bloque.
+export function fechaDeCelda(semana: Date, dow: number, bloqueInicio: string): Date {
+  return new Date(
+    Date.UTC(
+      semana.getUTCFullYear(),
+      semana.getUTCMonth(),
+      semana.getUTCDate() + (dow - 1),
+      Number(bloqueInicio.slice(0, 2)),
+      Number(bloqueInicio.slice(3, 5)),
+    ),
+  )
+}
+
+// Color del círculo de contador según el tipo de cita: el círculo resume el
+// bloque y su color dice de qué tipo son las citas que contiene.
+export function colorTipoCita(slug: string | null | undefined): {
+  clase: string
+  nombre: string
+} {
+  switch (slug) {
+    case "virtual":
+      return { clase: "bg-blue-500 text-white", nombre: "virtual" }
+    case "presencial":
+      return { clase: "bg-emerald-500 text-white", nombre: "presencial" }
+    default:
+      // Sin modalidad (citas internas que staff crea sin catálogo).
+      return { clase: "bg-purple-500 text-white", nombre: "interna" }
+  }
+}
+
+export interface CeldaGrilla {
+  /** `slotKey(fecha)`: identifica el bloque en toda la app. */
+  clave: string
+  /** Fecha UTC del inicio del bloque. */
+  fecha: Date
+  pasado: boolean
+  laborable: boolean
+  estado: EstadoSlot | undefined
+  citas: CitaEnSlot[]
+}
+
+// Celdas (día × bloque) de una semana, en orden de fila: cada `BLOQUES` consecutivo
+// cubre los `DIAS_CORTOS` días de esa fila. Centraliza la aritmética UTC que antes
+// estaba duplicada en el calendario público y en la agenda de staff.
+// Acepta cualquier fecha de la semana como entrada (normaliza al lunes).
+export function celdasDeSemana(
+  semana: Date,
+  datosPorClave: Map<string, { estado?: EstadoSlot; citas?: CitaEnSlot[] }>,
+  ahora: Date = new Date(),
+): CeldaGrilla[] {
+  const lunes = inicioSemana(semana)
+  const celdas: CeldaGrilla[] = []
+  for (const bloque of BLOQUES) {
+    for (const dia of DIAS_CORTOS) {
+      const fecha = fechaDeCelda(lunes, dia.dow, bloque.inicio)
+      const datos = datosPorClave.get(slotKey(fecha))
+      celdas.push({
+        clave: slotKey(fecha),
+        fecha,
+        pasado: fecha.getTime() < ahora.getTime(),
+        laborable: DIAS_LABORALES.includes(fecha.getUTCDay()),
+        estado: datos?.estado,
+        citas: datos?.citas ?? [],
+      })
+    }
+  }
+  return celdas
 }

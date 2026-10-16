@@ -29,7 +29,7 @@ El sistema implementa una **plataforma de presentación interactiva basada en vi
 ### Características actuales (código real)
 
 - **Landing pública** — servicios, portafolio de proyectos, historia, contacto.
-- **Portafolio público por sede** — `/portafolio/[sede]` lista los proyectos publicados de esa sede con filtro por categoría; `/portafolio/[sede]/[slug]` muestra una **ficha plana**: portada a sangre, galería de fotos (`proyectos_fotos`) y, solo en Santa Marta, un visor de video sincronizado (`VideoViewer`) con la primera propuesta publicada.
+- **Portafolio público** — `/portafolio` muestra una sola página con las dos listas: Santa Marta arriba y Bogotá abajo, con filtro por categoría; `/portafolio/[sede]/[slug]` muestra la **ficha plana** de cada proyecto: portada a sangre, galería de fotos (`proyectos_fotos`) y, solo en Santa Marta, un visor de video sincronizado (`VideoViewer`) con la primera propuesta publicada.
 - **Enlace privado de propuesta** — `/propuestas/[token]` accesible sin login con token criptográfico seguro.
 - **Agenda pública de citas** — reserva en 2 pasos (modalidad → horario) con la duración y el costo de cada modalidad (`modalidades_cita.duracion_minutos` y `.costo`).
 - **Panel de staff** — gestión de proyectos, clientes, agenda de citas, usuarios y taller de diseño de propuestas.
@@ -51,7 +51,7 @@ El sistema implementa una **plataforma de presentación interactiva basada en vi
 | **Cita** | Reserva de tiempo en la agenda (`citas`) con modalidad (`modalidades_cita`), precio copiado al reservar (`precio_copiado`) y, en las presenciales, `direccion` de la visita. |
 | **Staff** | Usuario interno autenticado en el panel (`usuarios`). Tres roles: `admin` (acceso completo), `asesor` (agenda, citas, clientes) y `disenador` (proyectos, productos, propuestas de video). |
 | **Enlace Privado** | URL única con token criptográfico (`/propuestas/[token]`) para compartir la propuesta con el cliente sin necesidad de login. |
-| **Portafolio** | Catálogo público por sede (`/portafolio` redirige a `/portafolio/santa-marta`) que expone los proyectos publicados de esa sede, filtrables por `categoria`. La ficha de cada proyecto es plana: no expone el árbol de productos y propuestas del taller, solo portada, galería y un visor. |
+| **Portafolio** | Catálogo público único (`/portafolio`) con una lista por sede —Santa Marta y Bogotá—, filtrable por `categoria`. La ficha de cada proyecto es plana: no expone el árbol de productos y propuestas del taller, solo portada, galería y un visor. |
 
 ## 3. Arquitectura de alto nivel
 

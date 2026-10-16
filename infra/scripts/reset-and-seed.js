@@ -77,28 +77,51 @@ async function uploadSeedVideo(sourcePath, objectPath) {
   return data.publicUrl
 }
 
+// Vídeos de la demo. La clave es semántica (lo que se ve), la `path` es dónde
+// queda en el bucket: se lee SIEMPRE por clave (`seedVideoUrls.globalCocinaPremium`),
+// nunca por `path`. La lista de claves se deriva de aquí para poder comprobar,
+// antes de insertar, que no falta ninguna.
+const DEFINICIONES_VIDEO_SEED = [
+  { key: 'globalCocinaBase', source: 'public/videos/hero-furniture-loop.mp4', path: 'demo/global-cocina-base.mp4' },
+  { key: 'globalCocinaPremium', source: 'public/tonfort-model-view.mp4', path: 'demo/global-cocina-premium.mp4' },
+  { key: 'globalCloset', source: 'public/videos/process-inspection-loop.mp4', path: 'demo/global-closet-premium.mp4' },
+  { key: 'globalMuebleTv', source: 'public/tonfort-hero.mp4', path: 'demo/global-mueble-tv.mp4' },
+  { key: 'globalPuerta', source: 'public/videos/hero-furniture-loop.mp4', path: 'demo/global-puerta.mp4' },
+  { key: 'globalBiblioteca', source: 'public/videos/process-inspection-loop.mp4', path: 'demo/global-biblioteca.mp4' },
+  { key: 'movimientoCajon', source: 'public/videos/process-inspection-loop.mp4', path: 'demo/movimiento-cajon.mp4' },
+  { key: 'accionCajon', source: 'public/videos/hero-furniture-loop.mp4', path: 'demo/accion-cajon.mp4' },
+  { key: 'movimientoLed', source: 'public/tonfort-model-view.mp4', path: 'demo/movimiento-led.mp4' },
+  { key: 'movimientoPuertaCloset', source: 'public/videos/hero-furniture-loop.mp4', path: 'demo/movimiento-puerta-closet.mp4' },
+  { key: 'accionPuertaCloset', source: 'public/videos/process-inspection-loop.mp4', path: 'demo/accion-puerta-closet.mp4' },
+  { key: 'movimientoPuerta', source: 'public/videos/process-inspection-loop.mp4', path: 'demo/movimiento-puerta.mp4' },
+  { key: 'accionPuerta', source: 'public/videos/hero-furniture-loop.mp4', path: 'demo/accion-puerta.mp4' },
+  { key: 'movimientoBiblioteca', source: 'public/tonfort-model-view.mp4', path: 'demo/movimiento-biblioteca.mp4' },
+]
+
+const CLAVES_VIDEO_SEED = DEFINICIONES_VIDEO_SEED.map((d) => d.key)
+
+// Fallar en seco si algún vídeo no quedó listo. Antes las propuestas y las
+// animaciones leían claves de ruta (`seedVideoUrls['demo/movimiento-cajon.mp4']`)
+// que nunca existían: daban `undefined`, `JSON.stringify` las omitía y las filas
+// se insertaban con la URL en NULL sin un solo error.
+function comprobarVideosSemilla(seedVideoUrls) {
+  const faltan = CLAVES_VIDEO_SEED.filter((clave) => {
+    const url = seedVideoUrls[clave]
+    return typeof url !== 'string' || url.length === 0
+  })
+  if (faltan.length > 0) {
+    throw new Error(
+      `Faltan URLs de vídeo semilla: ${faltan.join(', ')}. ` +
+        'Revisa DEFINICIONES_VIDEO_SEED (clave ↔ source ↔ path).',
+    )
+  }
+}
+
 async function prepareSeedVideos() {
   await ensureVisoresVideoBucket()
 
-  const definitions = [
-    { key: 'globalCocinaBase', source: 'public/videos/hero-furniture-loop.mp4', path: 'demo/global-cocina-base.mp4' },
-    { key: 'globalCocinaPremium', source: 'public/tonfort-model-view.mp4', path: 'demo/global-cocina-premium.mp4' },
-    { key: 'globalCloset', source: 'public/videos/process-inspection-loop.mp4', path: 'demo/global-closet-premium.mp4' },
-    { key: 'globalMuebleTv', source: 'public/tonfort-hero.mp4', path: 'demo/global-mueble-tv.mp4' },
-    { key: 'globalPuerta', source: 'public/videos/hero-furniture-loop.mp4', path: 'demo/global-puerta.mp4' },
-    { key: 'globalBiblioteca', source: 'public/videos/process-inspection-loop.mp4', path: 'demo/global-biblioteca.mp4' },
-    { key: 'movimientoCajon', source: 'public/videos/process-inspection-loop.mp4', path: 'demo/movimiento-cajon.mp4' },
-    { key: 'accionCajon', source: 'public/videos/hero-furniture-loop.mp4', path: 'demo/accion-cajon.mp4' },
-    { key: 'movimientoLed', source: 'public/tonfort-model-view.mp4', path: 'demo/movimiento-led.mp4' },
-    { key: 'movimientoPuertaCloset', source: 'public/videos/hero-furniture-loop.mp4', path: 'demo/movimiento-puerta-closet.mp4' },
-    { key: 'accionPuertaCloset', source: 'public/videos/process-inspection-loop.mp4', path: 'demo/accion-puerta-closet.mp4' },
-    { key: 'movimientoPuerta', source: 'public/videos/process-inspection-loop.mp4', path: 'demo/movimiento-puerta.mp4' },
-    { key: 'accionPuerta', source: 'public/videos/hero-furniture-loop.mp4', path: 'demo/accion-puerta.mp4' },
-    { key: 'movimientoBiblioteca', source: 'public/tonfort-model-view.mp4', path: 'demo/movimiento-biblioteca.mp4' },
-  ]
-
   const urls = {}
-  for (const definition of definitions) {
+  for (const definition of DEFINICIONES_VIDEO_SEED) {
     urls[definition.key] = await uploadSeedVideo(definition.source, definition.path)
   }
   return urls
@@ -109,11 +132,21 @@ async function getCitasTableName(supabase) {
   return error ? 'cites' : 'citas'
 }
 
-const TABLAS = [
+// Orden de borrado del fallback fila a fila: hijas antes que madres, para no
+// depender del ON DELETE CASCADE (que no todas las FKs tienen).
+const ORDEN_BORRADO = [
   'propuestas_3d_animaciones',
+  'cotizacion_producto_versiones',
+  'proyectos_visores',
+  'proyectos_fotos',
+  'visores_landing_animaciones',
+  'visores_landing',
+  'cotizacion_productos',
+  'cotizaciones',
   'propuestas_3d',
   'productos',
   'proyectos',
+  'citas',
   'clientes',
   'modalidades_cita',
   'usuarios',
@@ -137,34 +170,58 @@ function randomPick(arr) {
 }
 
 async function truncateTablas(supabase) {
-  const tablasStr = TABLAS.join(', ')
-  const sql = `TRUNCATE TABLE ${tablasStr} RESTART IDENTITY CASCADE`
+  // Sondeo previo: una tabla que no existe haría caer el TRUNCATE entero y nos
+  // empujaría al fallback fila a fila (mucho más lento) sin necesidad.
+  const existentes = []
+  for (const tabla of ORDEN_BORRADO) {
+    const { error } = await supabase.from(tabla).select('id').limit(1)
+    if (!error) existentes.push(tabla)
+  }
+  console.log(`Tablas a vaciar (${existentes.length}): ${existentes.join(', ')}`)
 
-  const { error } = await supabase.rpc('exec_sql', { sql })
-
-  if (error) {
-    console.error('Error truncating tables via RPC, falling back to row delete...')
-    for (const tabla of TABLAS) {
-      try {
-        const { error: delError } = await supabase.from(tabla).delete().neq('id', '00000000-0000-0000-0000-000000000000')
-        if (delError) console.error(`Error deleting ${tabla}:`, delError)
-        else console.log(`Deleted ${tabla}.`)
-      } catch (e) {
-        console.error(`Error processing ${tabla}:`, e)
-      }
-    }
+  const rpcDisponible = await (async () => {
+    const { error } = await supabase.rpc('exec_sql', { sql: 'SELECT 1' })
+    return !error
+  })()
+  if (rpcDisponible) {
+    console.log('RPC exec_sql disponible: TRUNCATE ... RESTART IDENTITY CASCADE')
   } else {
-    console.log('Truncated all tables.')
+    console.log('RPC exec_sql NO disponible (su migración quedó en migrations_archive):')
+    console.log('  se borra fila a fila. Mismo resultado, más lento.')
   }
 
+  // El TRUNCATE en una sola sentencia respeta el CASCADE, así que el orden da
+  // igual; el fallback fila a fila recorre `existentes`, que ya viene en
+  // ORDEN_BORRADO (hijas antes que madres).
+  const sql = `TRUNCATE TABLE ${existentes.join(', ')} RESTART IDENTITY CASCADE`
+  const { error } = rpcDisponible ? await supabase.rpc('exec_sql', { sql }) : { error: new Error('sin rpc') }
+
+  if (error && rpcDisponible) {
+    console.error(`TRUNCATE falló (${error.message}), cayendo a borrado fila a fila...`)
+  }
+
+  if (!error) {
+    console.log('Truncated all tables.')
+    return
+  }
+
+  for (const tabla of existentes) {
+    try {
+      const { error: delError } = await supabase.from(tabla).delete().neq('id', '00000000-0000-0000-0000-000000000000')
+      if (delError) console.error(`Error deleting ${tabla}:`, delError.message ?? delError)
+      else console.log(`Deleted ${tabla}.`)
+    } catch (e) {
+      console.error(`Error processing ${tabla}:`, e.message ?? e)
+    }
+  }
+
+  // `citas`/`cites`: el nombre real depende de si se aplicó el rename. Si no
+  // estaba en `existentes` es porque se llama distinto.
   const citasTabla = await getCitasTableName(supabase)
-  const { error: citasError } = await supabase.rpc('exec_sql', { sql: `TRUNCATE TABLE ${citasTabla} RESTART IDENTITY CASCADE` })
-  if (citasError) {
+  if (!existentes.includes(citasTabla)) {
     const { error: delError } = await supabase.from(citasTabla).delete().neq('id', '00000000-0000-0000-0000-000000000000')
-    if (delError) console.error(`Error deleting ${citasTabla}:`, delError)
+    if (delError) console.error(`Error deleting ${citasTabla}:`, delError.message ?? delError)
     else console.log(`Deleted ${citasTabla}.`)
-  } else {
-    console.log(`Truncated ${citasTabla}.`)
   }
 }
 
@@ -185,6 +242,7 @@ async function seed() {
   console.log('Seeding test data...')
 
   const seedVideoUrls = await prepareSeedVideos()
+  comprobarVideosSemilla(seedVideoUrls)
   const now = new Date().toISOString()
 
   // ==========================================
@@ -398,7 +456,7 @@ async function seed() {
       producto_id: productosData[1].id,
       titulo: 'Cocina Premium de Madera',
       descripcion: 'Cocina con frentes de roble, mesón de granito y iluminación LED integrada.',
-      video_global_url: seedVideoUrls['demo/global-cocina-premium.mp4'],
+      video_global_url: seedVideoUrls.globalCocinaPremium,
       frame_centro_ms: 3000,
       estado: 'borrador',
       link_activo: false,
@@ -413,7 +471,7 @@ async function seed() {
       producto_id: productosData[2].id,
       titulo: 'Closet Walk-In Premium',
       descripcion: 'Sistema completo de walk-in con espejos y iluminación LED.',
-      video_global_url: seedVideoUrls['demo/global-closet-premium.mp4'],
+      video_global_url: seedVideoUrls.globalCloset,
       frame_centro_ms: 4000,
       estado: 'enviada',
       link_activo: true,
@@ -428,7 +486,7 @@ async function seed() {
       producto_id: productosData[3].id,
       titulo: 'Mueble de TV Minimalista',
       descripcion: 'Mueble de TV con halo perimetral y gestión de cables.',
-      video_global_url: seedVideoUrls['demo/global-mueble-tv.mp4'],
+      video_global_url: seedVideoUrls.globalMuebleTv,
       frame_centro_ms: 6000,
       estado: 'lista',
       link_activo: true,
@@ -443,7 +501,7 @@ async function seed() {
       producto_id: productosData[4].id,
       titulo: 'Puerta de Madera Maciza',
       descripcion: 'Puerta pivotante con manijón embutido iluminado y alpaca de pino.',
-      video_global_url: seedVideoUrls['demo/global-puerta.mp4'],
+      video_global_url: seedVideoUrls.globalPuerta,
       frame_centro_ms: 2000,
       estado: 'enviada',
       link_activo: true,
@@ -458,7 +516,7 @@ async function seed() {
       producto_id: productosData[5].id,
       titulo: 'Biblioteca Integral',
       descripcion: 'Estantería flotante con iluminación de tarea y gestión de libros.',
-      video_global_url: seedVideoUrls['demo/global-biblioteca.mp4'],
+      video_global_url: seedVideoUrls.globalBiblioteca,
       frame_centro_ms: 3500,
       estado: 'enviada',
       link_activo: false,
@@ -487,8 +545,8 @@ async function seed() {
       propuesta_id: propuestasData[0].id,
       titulo: 'Apertura de Cajón',
       descripcion: 'Animación del cajón superior abriéndose.',
-      video_movimiento_url: seedVideoUrls['demo/movimiento-cajon.mp4'],
-      video_accion_url: seedVideoUrls['demo/accion-cajon.mp4'],
+      video_movimiento_url: seedVideoUrls.movimientoCajon,
+      video_accion_url: seedVideoUrls.accionCajon,
       velocidad_normal: 1,
       velocidad_inversa: 2,
       orden: 0,
@@ -500,7 +558,7 @@ async function seed() {
       propuesta_id: propuestasData[0].id,
       titulo: 'Encendido LED',
       descripcion: 'Animación del encendido de iluminación LED integrada.',
-      video_movimiento_url: seedVideoUrls['demo/movimiento-led.mp4'],
+      video_movimiento_url: seedVideoUrls.movimientoLed,
       velocidad_normal: 1,
       velocidad_inversa: 1.5,
       orden: 1,
@@ -513,8 +571,8 @@ async function seed() {
       propuesta_id: propuestasData[2].id,
       titulo: 'Apertura de Puerta',
       descripcion: 'Animación de apertura de la puerta del closet.',
-      video_movimiento_url: seedVideoUrls['demo/movimiento-puerta-closet.mp4'],
-      video_accion_url: seedVideoUrls['demo/accion-puerta-closet.mp4'],
+      video_movimiento_url: seedVideoUrls.movimientoPuertaCloset,
+      video_accion_url: seedVideoUrls.accionPuertaCloset,
       velocidad_normal: 1,
       velocidad_inversa: 2,
       orden: 0,
@@ -527,8 +585,8 @@ async function seed() {
       propuesta_id: propuestasData[4].id,
       titulo: 'Apertura Pivotante',
       descripcion: 'Animación de apertura de la puerta pivotante.',
-      video_movimiento_url: seedVideoUrls['demo/movimiento-puerta.mp4'],
-      video_accion_url: seedVideoUrls['demo/accion-puerta.mp4'],
+      video_movimiento_url: seedVideoUrls.movimientoPuerta,
+      video_accion_url: seedVideoUrls.accionPuerta,
       velocidad_normal: 1,
       velocidad_inversa: 3,
       orden: 0,
@@ -541,7 +599,7 @@ async function seed() {
       propuesta_id: propuestasData[5].id,
       titulo: 'Ajuste de Estantería',
       descripcion: 'Animación del ajuste de estantes en la biblioteca.',
-      video_movimiento_url: seedVideoUrls['demo/movimiento-biblioteca.mp4'],
+      video_movimiento_url: seedVideoUrls.movimientoBiblioteca,
       velocidad_normal: 1,
       velocidad_inversa: 2,
       orden: 0,
@@ -561,9 +619,13 @@ async function seed() {
   // 7. CITAS y MODALIDADES (Agenda - sin alterar lógica)
   // ==========================================
 
+  // Catálogo cerrado: `slug` es lo que enlaza /agenda/modalidad con
+  // /agenda/horario y lo que decide icono y bullets, y la página no renderiza
+  // el selector si no hay exactamente 2 activas. Los mismos valores (y los
+  // mismos precios/duraciones) que siembra `20260924000000_espacio_publico.sql`.
   const modalidadesCita = [
-    { id: uuid(), nombre: 'Cotización', costo: 0, duracion_minutos: 120, activo: true, created_at: now, updated_at: now },
-    { id: uuid(), nombre: 'Revisión de diseño', costo: 0, duracion_minutos: 120, activo: true, created_at: now, updated_at: now },
+    { id: uuid(), nombre: 'Virtual', slug: 'virtual', descripcion: 'Videollamada con tu diseñador. Sin costo.', costo: 0, duracion_minutos: 90, activo: true, orden: 0, created_at: now, updated_at: now },
+    { id: uuid(), nombre: 'Presencial', slug: 'presencial', descripcion: 'Visita a tu domicilio y toma de medidas.', costo: 70000, duracion_minutos: 120, activo: true, orden: 1, created_at: now, updated_at: now },
   ]
 
   const { error: modalidadesError } = await supabase.from('modalidades_cita').insert(modalidadesCita)
@@ -584,12 +646,22 @@ async function seed() {
     'Espacio integral para oficina',
   ]
 
+  // Días laborables de la retícula (Lun–Sáb); el domingo no tiene bloques, así
+  // que una cita ahí quedaría fuera de la agenda en lugar de en la grilla.
+  const DIAS_LABORABLES = [1, 2, 3, 4, 5, 6]
+
   const citas = []
   for (let i = 0; i < 48; i++) {
-    const fecha = randomDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), new Date(Date.now() + 30 * 24 * 60 * 60 * 1000))
+    let fecha = randomDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), new Date(Date.now() + 30 * 24 * 60 * 60 * 1000))
+    while (!DIAS_LABORABLES.includes(fecha.getUTCDay())) {
+      fecha = randomDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), new Date(Date.now() + 30 * 24 * 60 * 60 * 1000))
+    }
     const hours = [8, 10, 14, 16]
     const hour = randomPick(hours)
-    fecha.setHours(hour, 0, 0, 0)
+    // Los bloques de `lib/agenda.ts` se generan en UTC (`setUTCHours`). Con
+    // `setHours` la demo quedaba corrida según la zona de quien corre el seed
+    // (p. ej. 13:00Z en vez de 08:00Z) y las citas no caían en la retícula.
+    fecha.setUTCHours(hour, 0, 0, 0)
 
     const cliente = randomPick(clientes)
     const estado = randomPick(estados)
@@ -632,7 +704,12 @@ async function seed() {
   console.log('Demo disenador login: disenador@tonfort.local / disenador12345')
   console.log('Demo asesor login: asesor@tonfort.local / asesor12345')
   console.log('Portfolio público: /portafolio')
-  console.log('Link privado demo: /propuestas/' + propuestasData.find(p => p.link_activo)?.link_token)
+  const conLink = propuestasData.find((p) => p.link_activo)
+  if (conLink?.link_token) {
+    console.log('Link privado demo: /propuestas/' + conLink.link_token)
+  } else {
+    console.log('Link privado demo: ninguna propuesta tiene link_activo')
+  }
 }
 
 async function main() {

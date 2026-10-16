@@ -9,11 +9,14 @@ export const MODALIDADES_PUBLICAS = ["virtual", "presencial"] as const
 export const citaPublicaSchema = z.object({
   nombre: z.string().min(2, "Escribe tu nombre").max(120),
   telefono: z.string().min(7, "WhatsApp no válido").max(40),
-  // Opcional: "" se normaliza a null para no guardar cadenas vacías.
+  // Opcional. El formulario público manda `null` cuando el usuario no escribe
+  // nada, así que hay que aceptar null además de undefined: con `.optional()`
+  // solo, esas solicitudes morían con 422 y nadie podía agendar sin
+  // descripción. "" y null se normalizan a null.
   descripcion: z
     .string()
     .max(1000)
-    .optional()
+    .nullish()
     .transform((v) => {
       const limpio = (v ?? "").trim()
       return limpio.length === 0 ? null : limpio
@@ -75,6 +78,19 @@ export const proyectoSchema = z.object({
   portada_url: z.string().url().nullable().optional(),
 })
 
+// Creación de proyecto desde Portafolio Admin (no requiere cliente, sí sede obligatoria)
+export const proyectoCreatePortafolioSchema = z.object({
+  titulo: z.string().min(2, "Mínimo 2 caracteres").max(200),
+  descripcion: z.string().max(2000).nullable().optional(),
+  sede: z.enum(["santa_marta", "bogota"], {
+    errorMap: () => ({ message: "Elige una sede" }),
+  }),
+  categoria: z.enum(CATEGORIAS_MUEBLE_SCHEMA).nullable().optional(),
+  orden: z.number().int().min(0).optional(),
+})
+
+export type ProyectoCreatePortafolio = z.infer<typeof proyectoCreatePortafolioSchema>
+
 export const loginSchema = z.object({
   usuario: z.string().min(1, "Usuario requerido"),
   password: z.string().min(1, "Contraseña requerida"),
@@ -92,4 +108,16 @@ export const aiSuggestSchema = z.object({
 export const citaAccionSchema = z.object({
   accion: z.enum(["aceptar", "cancelar", "mover", "eliminar", "reenviar"]),
   fecha_hora: z.string().optional(), // requerido para "mover"
+  // Confirmar una `en_espera` obliga a resolver el resto del bloque: por cada
+  // otra `en_espera` de la misma `fecha_hora` + modalidad, si se mueve (¿a qué
+  // bloque?) o se elimina. El backend rechaza una confirmación incompleta.
+  resolucion: z
+    .array(
+      z.object({
+        id: z.string().uuid(),
+        accion: z.enum(["mover", "eliminar"]),
+        fecha_hora: z.string().optional(), // obligatorio si accion === "mover"
+      }),
+    )
+    .optional(),
 })

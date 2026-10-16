@@ -106,7 +106,9 @@ Notas:
   (la tabla `cites` original era más laxa de lo que asumía la documentación anterior a la
   migración `20260923000000`).
 - `estado` no tiene CHECK en el esquema; los valores válidos los fija la aplicación
-  (`en_espera`, `aceptada`, `cancelada`).
+  (`en_espera`, `aceptada`, `cancelada`). La regla de qué estado ocupa un bloque y qué implica
+  confirmar está en `docs/01_reglas_negocio.md` §3 (no hay cambios de esquema: es lógica de
+  servicio).
 - Los tres campos nuevos (`modalidad_id`, `precio_copiado`, `direccion`) los añade
   `supabase/migrations/20260924000000_espacio_publico.sql`, que **aún no está aplicada**.
 
@@ -272,23 +274,28 @@ consuma sin adaptaciones. La añade `20260924000000_espacio_publico.sql`.
 | Campo | Tipo | Restricciones | Descripción |
 |---|---|---|---|
 | `id` | UUID | PK, `gen_random_uuid()` | Identificador único |
-| `slot` | TEXT | NOT NULL, CHECK in (`primero`, `segundo`) | **Solo hay 2 slots.** Índice único `visores_landing_slot_unq`, que habilita el `upsert` por `slot` de la API de staff |
+| `slot` | TEXT | NULL | **Legacy.** `20260925000000_visores_carrusel.sql` quita el `NOT NULL`, el `CHECK` y el índice único `visores_landing_slot_unq`: el carrusel no usa slots. Las filas viejas conservan su valor |
 | `eyebrow` | TEXT | NULL | Antetítulo sobre el visor |
 | `titulo` | TEXT | NOT NULL | Título visible |
 | `descripcion` | TEXT | NULL | Párrafo de apoyo |
 | `video_global_url` | TEXT | NOT NULL | Video principal (bucket `visores-video`) |
 | `frame_centro_ms` | INTEGER | NOT NULL, DEFAULT 0 | Posición canónica de reposo |
 | `activo` | BOOLEAN | NOT NULL, DEFAULT true | El `GET` público solo devuelve los activos |
-| `orden` | INTEGER | NOT NULL, DEFAULT 0 | Orden de presentación |
+| `orden` | INTEGER | NOT NULL, DEFAULT 0 | Orden de presentación en el carrusel. Índice `visores_landing_orden_idx` |
 | `created_at` / `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT now() | Timestamps, con trigger `_tonfort_touch_updated_at()` |
 
 RLS: `service_role_full_access_visores_landing` (todo el acceso es server-side; el navegador
 nunca lee la tabla directamente).
 
 **La tabla nace vacía.** La migración solo hace `INSERT` en `modalidades_cita`, no siembra filas
-de visor. Como `app/page.tsx` solo renderiza `LandingVisor` cuando el slot tiene fila,
-**aplicar la migración deja la landing sin las 2 secciones de visor** hasta que el admin las
-cree en `/staff/diseno/visores`. Es el comportamiento previsto, no una rotura.
+de visor. Como `app/page.tsx` solo monta `VisoresCarousel` cuando hay visores activos con video,
+**aplicar la migración deja la landing sin la sección de presentación de diseños** hasta que el
+admin cree el primero en `/staff/administracion/visores`. Es el comportamiento previsto, no una
+rotura.
+
+Desde `20260925000000_visores_carrusel.sql` la tabla es una lista, no un par de slots: el editor
+crea, reordena, activa y elimina visores, y todas las rutas de la API van por `[id]`, no por
+`[slot]`.
 
 ---
 
@@ -396,6 +403,7 @@ video. Sus Route Handlers (`app/api/cotizaciones/**` salvo `link/[token]`, `app/
 | `20260922000001_cotizaciones_derivadas.sql` | `cotizacion_productos` / `cotizacion_propuestas`; `proyectos.cliente_id` pasa a nullable |
 | `20260923000000_fix_citas_table_name.sql` | Renombra `cites` → `citas` si el nombre bueno no existe |
 | `20260924000000_espacio_publico.sql` | Espacio público: modalidades, `citas` (modalidad/precio/dirección), `clientes`, `proyectos` (sede/categoría/portada), `proyectos_fotos`, `visores_landing(+_animaciones)`, bucket `portafolio-imagenes`, RLS y triggers |
+| `20260925000000_visores_carrusel.sql` | `visores_landing` pasa de 2 slots a N visores: quita el `CHECK` de `slot`, su `NOT NULL` y `visores_landing_slot_unq`, e indexa `orden`. Idempotente |
 
 ---
 
@@ -403,39 +411,44 @@ video. Sus Route Handlers (`app/api/cotizaciones/**` salvo `link/[token]`, `app/
 
 ### 7.1 Migraciones escritas pero **no aplicadas**
 
-`npm run db:check` (que consulta la BD real con `service_role`) a fecha de hoy devuelve:
+`npm run db:check` (que consulta la BD real con `service_role`) a fecha de hoy devuelve: las 11
+tablas existen y tienen datos (`citas` 49 filas, `visores_landing` 0).
 
-| Tabla | Estado en BD real |
-|---|---|
-| `usuarios`, `clientes`, `modalidades_cita`, `proyectos`, `productos`, `propuestas_3d`, `propuestas_3d_animaciones` | ✓ OK |
-| `citas` | **✗ FALTA** |
-| `proyectos_fotos` | **✗ FALTA** |
-| `visores_landing` | **✗ FALTA** |
-| `visores_landing_animaciones` | **✗ FALTA** |
+Origen histórico del fallo de `citas`: la tabla se creó con el typo `cites` y la migración
+`20260923000000_fix_citas_table_name.sql`, que la renombra, se aplicó tarde. Las dos migraciones
+(`20260923000000` → `20260924000000`) se aplicaron **fuera de orden** respecto al repo y hoy la BD
+ya está al día con ellas: ninguna usa `IF NOT EXISTS` / `DROP ... IF EXISTS` de más, así que
+volver a correrlas es inocuo.
 
-`infra/scripts/check-tables.js` espera **11 tablas** (`proyectos_fotos`, `visores_landing` y
-`visores_landing_animaciones` se añadieron a `TABLAS_ESPERADAS`); 7 pasan y 4 fallan.
+**La única migración del repo que sigue sin aplicar es `20260925000000_visores_carrusel.sql`.**
+La BD conserva el esquema antiguo de dos visores: `slot` NOT NULL sin default, el índice único
+`visores_landing_slot_unq` y el CHECK que solo admite `'primero'`/`'segundo'`. Mientras no se
+aplique, `POST /api/staff/administracion/visores-landing` responde **409** con el nombre de la
+migración en `migracionPendiente` (el editor lo muestra en un toast), porque con ese esquema el
+carrusel no puede pasar de dos filas.
 
-Origen del fallo de `citas`: la tabla se creó con el typo `cites` y la migración
-`20260923000000_fix_citas_table_name.sql`, que la renombra, **nunca se aplicó**. Por eso las
-migraciones que la modifican (`20260924000000`) tampoco pueden aplicarse todavía: fallarían en su
-`ALTER TABLE citas`.
+Para aplicarla, en el SQL editor de Supabase:
 
-**Ninguna de las dos migraciones pendientes es idempotente frente a una BD sin `citas`**: hay que
-aplicarlas en orden (`20260923000000` → `20260924000000`). Ambas usan `IF NOT EXISTS` /
-`DROP ... IF EXISTS`, así que se pueden volver a correr sin riesgo una vez la primera esté aplicada.
+```sql
+DO $$
+DECLARE nombre_check TEXT;
+BEGIN
+  SELECT conname INTO nombre_check
+  FROM pg_constraint
+  WHERE conrelid = 'visores_landing'::regclass
+    AND contype = 'c'
+    AND pg_get_constraintdef(oid) ILIKE '%slot%';
+  IF nombre_check IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE visores_landing DROP CONSTRAINT %I', nombre_check);
+  END IF;
+END $$;
 
-Efectos secundarios **esperados** al aplicar `20260924000000`:
+DROP INDEX IF EXISTS visores_landing_slot_unq;
+ALTER TABLE visores_landing ALTER COLUMN slot DROP NOT NULL;
+CREATE INDEX IF NOT EXISTS visores_landing_orden_idx ON visores_landing(orden);
+```
 
-1. La landing pierde las 2 secciones de visor: `visores_landing` nace vacía y la migración no
-   siembra filas.
-2. Los proyectos existentes salen como **"Sin categoría"**: `proyectos.categoria` es nullable sin
-   default. El backfill es trabajo de staff (`/staff/administracion/portafolio`).
-3. `proyectos.sede` **sí** se rellena sola (`NOT NULL DEFAULT 'santa_marta'`): no hace falta
-   migración de datos manual.
-4. Las citas existentes se asignan a la modalidad `virtual` (la de costo 0) con
-   `precio_copiado = 0`. No se borra ninguna cita.
-5. El bucket `portafolio-imagenes` se crea y pasa a `public = true`.
+Es idempotente: se puede ejecutar dos veces sin efecto.
 
 ### 7.2 `lib/supabase/types.ts` vs migraciones
 

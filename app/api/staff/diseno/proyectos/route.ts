@@ -29,6 +29,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Backend no configurado" }, { status: 500 })
   }
 
+  const { searchParams } = new URL(req.url)
+  const sedeParam = searchParams.get("sede")
+  const conVisor = searchParams.get("conVisor") === "true"
+
   let query = supabase
     .from("proyectos")
     .select("*, asignado:usuarios(*)")
@@ -36,6 +40,23 @@ export async function GET(req: NextRequest) {
 
   if (sesion.rol === "disenador") {
     query = query.eq("asignado_a", requireUsuarioId(sesion))
+    // Por defecto, el diseñador ve solo Santa Marta (proyectos con visor 3D)
+    if (!sedeParam) {
+      query = query.eq("sede", "santa_marta")
+    } else if (sedeParam !== "todas") {
+      query = query.eq("sede", sedeParam)
+    }
+  } else if (sedeParam && sedeParam !== "todas") {
+    // Admin: filtro opcional por sede
+    query = query.eq("sede", sedeParam)
+  }
+
+  // Filtro opcional: solo proyectos con visor 3D (propuestas publicadas en estado 'enviada')
+  if (conVisor) {
+    query = query
+      .select("*, asignado:usuarios(*), propuestas_3d!inner(publicada_portafolio, estado)")
+      .eq("propuestas_3d.publicada_portafolio", true)
+      .eq("propuestas_3d.estado", "enviada")
   }
 
   const { data, error } = await query

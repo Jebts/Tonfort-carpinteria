@@ -24,6 +24,8 @@ export interface VideoViewerProps<T extends AnimacionVisor = AnimacionVisor> {
   onAddAnimacion?: () => void
   onEditAnimacion?: (animacion: T) => void
   onDeleteAnimacion?: (animacion: T) => void
+  /** Avisa cuando el video global ya está listo (ver `useViewerSequence`). */
+  onVideoListo?: () => void
   children?: React.ReactNode
   sidebarCollapsed?: boolean
   modeToggle?: React.ReactNode
@@ -44,6 +46,7 @@ export function VideoViewer<T extends AnimacionVisor = AnimacionVisor>({
   onAddAnimacion,
   onEditAnimacion,
   onDeleteAnimacion,
+  onVideoListo,
   children,
   sidebarCollapsed = false,
   modeToggle,
@@ -61,11 +64,17 @@ export function VideoViewer<T extends AnimacionVisor = AnimacionVisor>({
     frameCentroMs,
     velocidadNormal: 1,
     velocidadInversa: 2,
+    onVideoGlobalListo: onVideoListo,
   })
 
   if (!video_global_url) {
     return (
-      <div className="flex min-h-[60svh] w-full flex-col items-center justify-center bg-black px-6 text-center">
+      <div
+        className={cn(
+          "flex min-h-[60svh] w-full flex-col items-center justify-center px-6 text-center",
+          isEditor ? "bg-black" : "bg-[#1d1d1f]",
+        )}
+      >
         <p className="font-sans text-lg text-white/70">No hay video configurado</p>
       </div>
     )
@@ -73,7 +82,11 @@ export function VideoViewer<T extends AnimacionVisor = AnimacionVisor>({
 
   const activeAnimacion = sequence.activeAnimacion
 
-
+  // En la lectura pública el contenedor y la banda de controles son el gris
+  // medio de Apple (#1d1d1f) y el video queda como el único rectángulo negro.
+  // El editor de staff conserva su negro: es una herramienta, no una pieza de
+  // escaparate.
+  const superficie = isEditor ? "bg-black" : "bg-[#1d1d1f]"
 
   const scrollUp = () => {
     if (nodoScrollRef.current) {
@@ -90,10 +103,11 @@ export function VideoViewer<T extends AnimacionVisor = AnimacionVisor>({
 return (
     <div
       className={cn(
-        "relative flex w-full flex-col bg-black text-white",
+        "relative flex w-full flex-col text-white",
+        superficie,
         isEditor
           ? cn("min-h-[100svh]", !sidebarCollapsed && "md:ml-80")
-          : "min-h-screen",
+          : "min-h-0",
       )}
     >
       {!hideHeader && children}
@@ -101,10 +115,14 @@ return (
         <div className="fixed top-20 right-6 z-[70]">{modeToggle}</div>
       )}
 
-      {/* Fondo negro solo como fallback. Los dos videos se apilan sin transicion:
-          el saliente permanece visible (opacity-100) hasta que el entrante tiene
-          frame decodificado, y el corte entre slots ocurre en un solo tick. */}
-      <div className="relative h-[65svh] w-full flex-shrink-0 bg-black md:h-auto md:aspect-video">
+      {/* Escenario estilo Apple: el negro es el rectángulo del video y el gris
+          es el fondo de la sección. El aire de arriba y abajo separa los dos
+          planos y da la sensación de profundidad de la referencia. */}
+      <div className="px-4 py-10 md:px-8 md:py-16">
+        <div className="relative mx-auto w-full max-w-5xl">
+          {/* Rectángulo negro: los dos videos se apilan sin transición, el
+              saliente permanece visible hasta que el entrante tiene frame. */}
+          <div className="relative h-[65svh] w-full overflow-hidden rounded-2xl bg-black md:h-auto md:aspect-video">
         <video
           ref={videoRefA}
           muted
@@ -141,152 +159,133 @@ return (
           aria-label={`Video de propuesta ${titulo_proyecto} — ${nombreproducto} buffer`}
           tabIndex={-1}
         />
-
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40 pointer-events-none z-10" />
-      </div>
-
-        {/* Botón global de volver - solo visible cuando no está en GLOBAL */}
-        {(activeAnimacion || sequence.state !== "GLOBAL") && (
-          <button
-            type="button"
-            onClick={sequence.reverseToGlobal}
-            disabled={sequence.isLocked}
-            className={cn(
-              "fixed top-20 right-6 z-[60] flex h-10 w-10 items-center justify-center rounded-full bg-[#1c1c1e] text-white shadow-2xl transition-all hover:bg-[#2c2c2e] hover:scale-105 active:scale-95 cursor-pointer",
-              sequence.isLocked && "opacity-50 cursor-not-allowed",
-            )}
-            title="Volver a la vista general (reversa 2x)"
-            aria-label="Volver a la vista general"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-        )}
-
-        {/* Banda de controles - nodos y scrubber en flujo, debajo del video */}
-        <div className="relative z-20 flex w-full flex-col gap-4 bg-[#121214] px-4 pb-5 pt-4 md:flex-row md:items-center md:gap-8 md:px-8">
-          {/* Nodos */}
+          {/* Nodos como en la referencia de Apple: columna a la izquierda,
+              centrada en vertical dentro del propio rectángulo del video. */}
           <aside
             className={cn(
-              "flex gap-3 md:w-64 md:shrink-0",
-              "flex-row items-center overflow-x-auto md:flex-col md:items-start md:overflow-y-auto",
+              "absolute left-5 top-1/2 z-30 flex -translate-y-1/2 flex-col items-start gap-3 overflow-y-auto",
+              "md:left-8",
             )}
           >
-            {animaciones.length > 4 && (
-              <button
-                type="button"
-                onClick={scrollUp}
-                className="hidden md:flex h-8 w-8 items-center justify-center rounded-full bg-[#1c1c1e] text-white hover:bg-[#2c2c2e] transition-all shadow-md cursor-pointer"
-                aria-label="Desplazar nodos arriba"
-              >
-                <ChevronUp className="h-4 w-4" />
-              </button>
-            )}
+                {animaciones.length > 4 && (
+                  <button
+                    type="button"
+                    onClick={scrollUp}
+                    className="hidden md:flex h-8 w-8 items-center justify-center rounded-full bg-[#1c1c1e] text-white hover:bg-[#2c2c2e] transition-all shadow-md cursor-pointer"
+                    aria-label="Desplazar nodos arriba"
+                  >
+                    <ChevronUp className="h-4 w-4" />
+                  </button>
+                )}
 
             <div
               ref={nodoScrollRef}
-              className="flex flex-row md:flex-col items-start gap-3 overflow-x-auto md:overflow-y-auto no-scrollbar max-h-[60vh] py-1 px-1"
+              className="flex flex-col items-start justify-center gap-3 overflow-y-auto no-scrollbar max-h-[52svh] py-1 px-1"
             >
-              {animaciones.map((animacion) => {
-                const isActive = activeAnimacion?.id === animacion.id
+                  {animaciones.map((animacion) => {
+                    const isActive = activeAnimacion?.id === animacion.id
 
-                return (
-                  <div key={animacion.id} className={cn(
-                    "flex items-center gap-2 transition-all duration-200",
-                    isActive ? "bg-[#1c1c1e] rounded-2xl p-3" : ""
-                  )}>
-                    <button
-                      type="button"
-                      onClick={() => sequence.selectAnimacion(animacion)}
-                      onPointerEnter={() => sequence.preloadSlot(animacion.video_movimiento_url ?? animacion.video_accion_url)}
-                      onPointerDown={() => sequence.preloadSlot(animacion.video_movimiento_url ?? animacion.video_accion_url)}
-                      onFocus={() => sequence.preloadSlot(animacion.video_movimiento_url ?? animacion.video_accion_url)}
-                      disabled={sequence.isLocked}
-                      className={cn(
-                        "inline-flex items-center gap-3 rounded-full px-4 py-3 text-xs sm:text-sm font-medium transition-all shadow-lg cursor-pointer whitespace-nowrap",
-                        isActive
-                          ? "bg-white text-black font-semibold shadow-2xl scale-[1.02]"
-                          : "bg-[#1c1c1e] text-white hover:bg-[#2c2c2e]",
-                        sequence.isLocked && "cursor-not-allowed opacity-50",
-                      )}
-                      aria-label={`Seleccionar nodo: ${animacion.titulo}`}
-                    >
-                      <span
-                        className={cn(
-                          "flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold shrink-0 transition-colors",
-                          isActive
-                            ? "bg-black text-white"
-                            : "bg-[#2c2c2e] text-white",
-                        )}
-                      >
-                        {isActive ? "✓" : "+"}
-                      </span>
-                      <span>{animacion.titulo}</span>
-                    </button>
+                    return (
+                      <div key={animacion.id} className="flex items-center gap-2 transition-all duration-200">
+                        <button
+                          type="button"
+                          onClick={() => sequence.selectAnimacion(animacion)}
+                          onPointerEnter={() => sequence.preloadSlot(animacion.video_movimiento_url ?? animacion.video_accion_url)}
+                          onPointerDown={() => sequence.preloadSlot(animacion.video_movimiento_url ?? animacion.video_accion_url)}
+                          onFocus={() => sequence.preloadSlot(animacion.video_movimiento_url ?? animacion.video_accion_url)}
+                          disabled={sequence.isLocked}
+                          className={cn(
+                            // Patrón "Take a closer look" de Apple: cápsula gris con
+                            // un círculo `+` que pasa a `✓` y la cápsula entera a
+                            // blanco cuando el punto está activo.
+                            "inline-flex items-center gap-3 rounded-full px-5 py-3.5 text-sm font-medium transition-all duration-300 cursor-pointer whitespace-nowrap",
+                            isActive
+                              ? "bg-white text-black font-semibold"
+                              : cn(
+                                  "text-white hover:bg-[#4a4a4c]",
+                                  isEditor ? "bg-[#1c1c1e]" : "bg-[#3a3a3c]",
+                                ),
+                            sequence.isLocked && "cursor-not-allowed opacity-50",
+                          )}
+                          aria-label={`Seleccionar nodo: ${animacion.titulo}`}
+                          aria-pressed={isActive}
+                        >
+                          <span
+                            className={cn(
+                              "flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold shrink-0 transition-colors",
+                              isActive ? "bg-black text-white" : "bg-white/15 text-white",
+                            )}
+                          >
+                            {isActive ? "✓" : "+"}
+                          </span>
+                          <span>{animacion.titulo}</span>
+                        </button>
 
-                    {isEditor && (
-                      <div className="flex items-center gap-1">
-                        {onEditAnimacion && (
-                          <button
-                            type="button"
-                            onClick={() => onEditAnimacion(animacion)}
-                            className="p-2 rounded-full bg-[#1c1c1e] text-white hover:bg-[#2c2c2e] transition-colors cursor-pointer"
-                            aria-label={`Editar ${animacion.titulo}`}
-                            title="Editar punto"
-                          >
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </button>
+                        {isEditor && (
+                          <div className="flex items-center gap-1">
+                            {onEditAnimacion && (
+                              <button
+                                type="button"
+                                onClick={() => onEditAnimacion(animacion)}
+                                className="p-2 rounded-full bg-[#1c1c1e] text-white hover:bg-[#2c2c2e] transition-colors cursor-pointer"
+                                aria-label={`Editar ${animacion.titulo}`}
+                                title="Editar punto"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            {onDeleteAnimacion && (
+                              <button
+                                type="button"
+                                onClick={() => onDeleteAnimacion(animacion)}
+                                className="p-2 rounded-full bg-[#1c1c1e] text-red-400 hover:bg-[#2c2c2e] transition-colors cursor-pointer"
+                                aria-label={`Eliminar ${animacion.titulo}`}
+                                title="Eliminar punto"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
                         )}
-                        {onDeleteAnimacion && (
-                          <button
-                            type="button"
-                            onClick={() => onDeleteAnimacion(animacion)}
-                            className="p-2 rounded-full bg-[#1c1c1e] text-red-400 hover:bg-[#2c2c2e] transition-colors cursor-pointer"
-                            aria-label={`Eliminar ${animacion.titulo}`}
-                            title="Eliminar punto"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+
+                        {/* Descripción expandible dentro del nodo */}
+                        {isActive && animacion.descripcion && (
+                          <p className="text-xs text-white/80 max-w-[200px] hidden md:block">
+                            {animacion.descripcion}
+                          </p>
                         )}
                       </div>
-                    )}
+                    )
+                  })}
 
-                    {/* Descripción expandible dentro del nodo */}
-                    {isActive && animacion.descripcion && (
-                      <p className="text-xs text-white/80 max-w-[200px] hidden md:block">
-                        {animacion.descripcion}
-                      </p>
-                    )}
-                  </div>
-                )
-              })}
+                  {isEditor && onAddAnimacion && (
+                    <button
+                      type="button"
+                      onClick={onAddAnimacion}
+                      className="inline-flex items-center gap-2 rounded-full bg-[#27272a] px-4 py-2.5 text-xs font-medium text-white hover:bg-[#3f3f46] transition-all cursor-pointer shadow-md"
+                      aria-label="Añadir nuevo punto"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>Añadir Punto</span>
+                    </button>
+                  )}
+                </div>
 
-              {isEditor && onAddAnimacion && (
-                <button
-                  type="button"
-                  onClick={onAddAnimacion}
-                  className="inline-flex items-center gap-2 rounded-full bg-[#27272a] px-4 py-2.5 text-xs font-medium text-white hover:bg-[#3f3f46] transition-all cursor-pointer shadow-md"
-                  aria-label="Añadir nuevo punto"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>Añadir Punto</span>
-                </button>
-              )}
-            </div>
+                {animaciones.length > 4 && (
+                  <button
+                    type="button"
+                    onClick={scrollDown}
+                    className="hidden md:flex h-8 w-8 items-center justify-center rounded-full bg-[#1c1c1e] text-white hover:bg-[#2c2c2e] transition-all shadow-md cursor-pointer"
+                    aria-label="Desplazar nodos abajo"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                )}
+              </aside>
+          </div>
 
-            {animaciones.length > 4 && (
-              <button
-                type="button"
-                onClick={scrollDown}
-                className="hidden md:flex h-8 w-8 items-center justify-center rounded-full bg-[#1c1c1e] text-white hover:bg-[#2c2c2e] transition-all shadow-md cursor-pointer"
-                aria-label="Desplazar nodos abajo"
-              >
-                <ChevronDown className="h-4 w-4" />
-              </button>
-            )}
-          </aside>
-
-          {/* Scrubber - always active for manual control */}
-          <div className="w-full md:flex-1">
+          {/* Barra de desplazamiento: debajo del video, centrada respecto a él */}
+          <div className="mx-auto mt-6 w-full max-w-2xl">
             <AppleScrubber
               currentTimeMs={sequence.currentTimeMs}
               durationMs={sequence.durationMs}
@@ -295,6 +294,25 @@ return (
             />
           </div>
         </div>
+      </div>
+
+      {/* Botón global de volver - solo visible cuando no está en GLOBAL */}
+      {(activeAnimacion || sequence.state !== "GLOBAL") && (
+        <button
+          type="button"
+          onClick={sequence.reverseToGlobal}
+          disabled={sequence.isLocked}
+          className={cn(
+            "fixed top-20 right-6 z-[60] flex h-10 w-10 items-center justify-center rounded-full bg-[#1c1c1e] text-white shadow-2xl transition-all hover:bg-[#2c2c2e] hover:scale-105 active:scale-95 cursor-pointer",
+            sequence.isLocked && "opacity-50 cursor-not-allowed",
+          )}
+          title="Volver a la vista general (reversa 2x)"
+          aria-label="Volver a la vista general"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+      )}
+
 
         {/* Contenido scrollable debajo del video */}
         {!hideContentSection && (

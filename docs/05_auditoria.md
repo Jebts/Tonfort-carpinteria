@@ -33,7 +33,7 @@ fotos_proyectos_anntiguos/ — 41 fotos sin clasificar — HOLD abierto, ver §5
 ### `app/`
 ```
 layout.tsx                — Root layout (fuentes Google, ThemeProvider, Analytics)
-page.tsx                  — Landing pública (hero, 2 LandingVisor, luz, proyectos, equipo, CTA agenda)
+page.tsx                  — Landing pública (hero, luz, VisoresCarousel, proyectos, equipo, CTA agenda)
 globals.css               — Design tokens + utilities
 sede/                     — Página de la sede (datos de lib/contact.ts, mapa)
 agenda/                   — Agenda pública: layout claro + flujo de 2 pasos
@@ -43,13 +43,13 @@ agenda/                   — Agenda pública: layout claro + flujo de 2 pasos
   paso-1|2|3/, confirmacion/ — Route Handlers legacy: 301 a /agenda/modalidad
 historia/page.tsx         — Historia de la marca
 portafolio/
-  page.tsx                — Alias → /portafolio/santa-marta
-  [sede]/page.tsx         — Catálogo por sede, con filtro ?categoria=
+  page.tsx                — Catálogo único: lista de Santa Marta + lista de Bogotá (?categoria=)
+  [sede]/page.tsx         — redirect 308 a /portafolio
   [sede]/[slug]/page.tsx  — Ficha plana: portada, galería, visor opcional
 propuestas/[token]/       — Enlace privado cliente para visualización de propuestas de video
 cotizaciones/[token]/     — Vista pública de la cotización por token
 proyectos/page.tsx        — Alias legacy → /portafolio
-sitemap.ts                — 6 URLs estáticas
+sitemap.ts                — 5 URLs estáticas
 staff/                    — Panel staff por roles (administracion, gestion, diseno) + aliases legacy
 api/                      — Route Handlers exclusivamente (sin Server Actions)
   citas/                  — Disponibilidad y reserva pública
@@ -63,7 +63,13 @@ api/                      — Route Handlers exclusivamente (sin Server Actions)
 theme-provider.tsx        — next-themes provider
 tonfort/                  — Componentes de dominio (VideoViewer, agenda, portafolio, landing)
   landing/                — Secciones de la landing (hero, luz, proyectos-recientes, equipo, agenda-cta)
-  agenda/                 — Flujo público de cita (selector de modalidad, calendario)
+  agenda/                 — Flujo público de cita + grilla compartida
+    grilla-bloques.tsx    — Retícula 4 bloques x Lun-Sáb (público y staff)
+    calendario.tsx        — Vista pública de la retícula (delega en grilla-bloques)
+    dialogo-bloque.tsx — Detalle del bloque: lista de citas + confirmación/mover
+    agenda-horario.tsx    — Paso 2: grilla + formulario
+    formulario-cita.tsx   — Formulario público
+    selector-modalidad.tsx — Paso 1: modalidad
   staff/                  — cliente-form.tsx, proyecto-fotos.tsx, visores-landing-editor.tsx
 ui/                       — Primitivas shadcn/ui (~60 componentes, incluidos select y sonner)
 ```
@@ -78,7 +84,8 @@ auth-db.ts                — Acceso a credenciales en BD
 staff-auth.ts             — Helpers Next.js (requireStaff, requireRol, getSesionServer)
 staff-client.ts           — Cliente API fetch para staff
 citas-service.ts          — Servicio de citas y agenda (tabla "citas") + modalidades
-agenda.ts / agenda-format.ts — Slots, bloques horarios y formato de fecha/hora
+agenda.ts / agenda-format.ts — Slots, bloques y aritmética UTC compartida
+    (inicioSemana, celdasDeSemana, slotKey) + formato de fecha/hora en UTC
 portfolio-service.ts      — Servicio de portafolio público (filtros sede/categoría, visores de landing)
 proyectos-service.ts      — Servicio de proyectos del panel de diseño
 categorias.ts             — Catálogo de categorías, copy y type guard
@@ -164,11 +171,21 @@ apliquen las migraciones pendientes (ver `docs/02_modelo_datos.md` §7).
    - La vista de administración permite crear cotizaciones, asociar propuestas, definir precios y revisar selecciones.
    - El módulo histórico de costeo técnico en `cotizacion/` permanece aislado y no forma parte del flujo activo; sus Route Handlers están archivados y responden `404`.
 4. **Refactor del espacio público (Olas 1-2 del plan de cierre)**:
-   - Portafolio público **plano y por sede**: `/portafolio/[sede]` y `/portafolio/[sede]/[slug]`. Se eliminó todo el subárbol `/portafolio/proyectos/**`.
+   - Portafolio público **plano y en una sola página**: `/portafolio` lista Santa Marta y Bogotá, y `/portafolio/[sede]/[slug]` es la ficha. Se eliminó todo el subárbol `/portafolio/proyectos/**`.
    - Agenda pública **de 2 pasos**: `/agenda/modalidad` → `/agenda/horario` → `/agenda/solicitud-recibida`, con las 4 rutas viejas conservadas como 301.
    - Panel de administración del portafolio con `sede`, `categoria`, `portada_url` y galería de fotos (`proyectos_fotos`), con endpoints `GET`/`POST` en `.../fotos` y `DELETE` en `.../fotos/[fotoId]`.
-   - Editores de los visores de la landing (`visores_landing`) en `/staff/diseno/visores`.
+   - Editor de los visores de la landing (`visores_landing`) en `/staff/administracion/visores`.
    - `direccion` de la cita presencial rellenable desde `/staff/gestion/citas`.
+5. **Una sola grilla de agenda (público y staff)**:
+   - `components/tonfort/agenda/grilla-bloques.tsx` es la retícula compartida por `/agenda/horario`
+     y `/staff/gestion/agenda`. La agenda de staff ya no tiene parrilla propia con aritmética en
+     hora local (`startOfDay`/`endOfDay`/`isWithinInterval`), que mostraba los bloques corridos
+     según la zona del visitante.
+   - `validarSlotLibre` usa la duración real (`duracion_minutos`, no 2 h fijas) y devuelve
+     `conflicto`; `resolverConfirmacion` (en `lib/citas-service.ts`) obliga a resolver el resto del
+     bloque antes de confirmar y es lo que usa `PATCH /api/staff/citas/[id]` con `accion: "aceptar"`.
+   - Las citas fuera de bloque se listan aparte en la agenda de staff (pendiente decidir si entran
+     en la regla de cupo; ver `docs/01_reglas_negocio.md` §3).
 
 ---
 
@@ -236,72 +253,57 @@ Estos parecían huérfanos en el plan original, pero están referenciados por c�
 
 ## 5. Pendientes abiertos
 
-### 5.1 Aviso de build
+### 5.1 Aviso de build — resuelto
 
-`metadataBase` no está configurado en los metadatos de la raíz. No es un error —el build pasa—
-pero Next.js avisa por consola y las URLs absolutas de Open Graph y Twitter se resuelven contra
-el origen del build en lugar del dominio canónico. Se arregla añadiendo `metadataBase` a
-`app/layout.tsx` (o `NEXT_PUBLIC_SITE_URL` si se quiere externalizar).
+`app/layout.tsx` ya declara `metadataBase` con `NEXT_PUBLIC_SITE_URL` y fallback a
+`https://tonfort.co` (mismo criterio que `app/sitemap.ts`). El aviso de consola de Next.js y la
+resolución de las URLs absolutas de Open Graph contra el origen del build quedaron cerrados.
 
 Los 103 `warning` que quedan en `npm run lint` (imports sin usar, imports fuera de orden,
 expresiones sin efecto) son preexistentes y no bloquean nada. Son deuda de menor gravedad y
 queda fuera de alcance del refactor del espacio público.
 `app/sitemap.ts` ya lee `NEXT_PUBLIC_SITE_URL` con fallback a `https://tonfort.co`.
 
-### 5.2 Migraciones escritas pero no aplicadas ⚠️
+### 5.2 Migraciones escritas pero no aplicadas ⚠️ (estado actualizado)
 
-`npm run db:check` contra la BD real da:
+El preflight del reinit (`npm run db:reinit -- --seco`) verifica el esquema antes de cualquier operación. Estado actual verificado:
 
 | Tabla | Estado |
 |---|---|
-| `usuarios`, `clientes`, `modalidades_cita`, `proyectos`, `productos`, `propuestas_3d`, `propuestas_3d_animaciones` | ✓ OK |
-| `citas` | ✗ FALTA |
-| `proyectos_fotos` | ✗ FALTA |
-| `visores_landing` | ✗ FALTA |
-| `visores_landing_animaciones` | ✗ FALTA |
+| `usuarios`, `clientes`, `citas`, `modalidades_cita`, `proyectos`, `proyectos_fotos`, `productos`, `propuestas_3d`, `propuestas_3d_animaciones`, `visores_landing`, `visores_landing_animaciones` | ✓ OK |
+| `cotizaciones`, `cotizacion_productos` | ✓ OK (aplicadas tras el reinit) |
+| `cotizacion_producto_versiones`, `proyectos_visores` | · ausentes (opcionales; no bloquean el reinit) |
 
-Origen: la tabla se creó con el typo `cites`, y `20260923000000_fix_citas_table_name.sql` (la que
-la renombra) nunca se aplicó. `20260924000000_espacio_publico.sql` tampoco, y **no puede
-aplicarse antes que la primera** porque su `ALTER TABLE citas` fallaría.
+Buckets: `visores-video` ✓, `portafolio-imagenes` ✓.
 
-Orden de aplicación y efectos esperados:
+**Importante:** la tabla `citas` **sí existe** (no `cites`). La migración `20260923000000_fix_citas_table_name.sql` ya fue aplicada (o la BD se creó ya con el nombre correcto). El RPC `exec_sql` **no existe** (su migración quedó en `migrations_archive`); el reset usa borrado fila a fila como fallback (más lento pero correcto).
 
-1. Aplicar `20260923000000_fix_citas_table_name.sql` (idempotente).
-2. Aplicar `20260924000000_espacio_publico.sql` (idempotente: `IF NOT EXISTS` / `DROP ... IF EXISTS`).
-3. `npm run db:check` → las 11 tablas deben dar ✓ OK y el bucket `portafolio-imagenes` debe existir.
+### 5.3 RESUELTO — `fotos_proyectos_anttiguos/` y `Carpinteria Antigua/`
 
-Al aplicarlas:
+Ambas carpetas se movieron a un archivo fuera del repo (`/Users/jebts/Documents/Proyects/tonfort-archivo/`) y se borraron del working tree:
 
-- **La landing pierde las 2 secciones de visor.** `visores_landing` nace vacía (la migración solo
-  siembra `modalidades_cita`) y `app/page.tsx` solo renderiza `LandingVisor` si el slot tiene
-  fila. Se rellenan desde `/staff/diseno/visores`. **No es una rotura.**
-- Los proyectos existentes salen como **"Sin categoría"**: `proyectos.categoria` es nullable sin
-  default. `proyectos.sede` **sí** se rellena sola (`NOT NULL DEFAULT 'santa_marta'`).
-- Las citas existentes se asignan a la modalidad `virtual` con `precio_copiado = 0`. No se borra
-  ninguna.
+- `fotos_proyectos_anttiguos/` (41 fotos, 9,1 MB) → `tonfort-archivo/fotos-proyectos-antiguos/`
+- `Carpinteria Antigua/` (2,4 GB crudo, sin la carpeta `organizado/` que ya está versionada en `infra/seed/portafolio-bogota/`) → `tonfort-archivo/carpinteria-antigua/`
 
-### 5.3 HOLD — `fotos_proyectos_anntiguos/`
+Las 12 mejores fotos de `fotos_proyectos_anttiguos/` ya se usaban en `/historia` (carrusel + bloques) y siguen en `public/historia/`. Las 29 restantes están en el archivo.
 
-41 imágenes sin clasificar en la raíz del repo. El plan de la Ola 2 pedía copiar 8-10 fotos de
-taller a `public/historia/` y borrar el resto. **No se hizo ninguna de las dos cosas.**
+### 5.4 Limpieza adicional (Ola 2)
 
-Motivo: el agente responsable no puede decidir con información suficiente cuáles son fotos de
-taller reales y cuáles encuadran bien para el sitio. Borrarlas a ciegas es irreversible desde el
-punto de vista del material (no del código).
+Se borraron/movieron a archivo los siguientes elementos del working tree:
 
-Estado real:
+| Elemento | Acción | Detalle |
+|---|---|---|
+| `infra/scripts/portafolio-limpiar-staging.mjs` | **Borrado** (destruía el set base) |
+| 9 scripts de staging one-time | Movidos a `tonfort-archivo/scripts-staging/` y borrados del repo |
+| `docs/campana-contenido/` (7 archivos) | Movido a `tonfort-archivo/docs-campana-contenido/` |
+| `supabase/migrations_archive/` (16 archivos) | **Borrado** (respaldados en historial git) |
+| `public/sede/1791132*-image.png` (8 capturas) | Movidos a `tonfort-archivo/public-descartado/` |
+| `public/history-founders.jpg`, `history-installation.jpg`, `history-family.jpg`, `history-first-build.jpg` | Movidos a `tonfort-archivo/public-descartado/` |
+| `public/IMG_6123.PNG` | Movido a `tonfort-archivo/public-descartado/` |
+| `public/models/` | **Borrado** (vacío) |
+| `public/sede/README.md` | Actualizado: eliminadas 3 filas de fotos que no existían (`sede-sofa-luz.jpg`, `sede-escritorio-plantas.jpg`, `sede-mostrador-tronco.jpg`) |
 
-- La carpeta sigue intacta con sus 41 archivos.
-- `public/historia/` **no existe**.
-- `content/historia.ts` sigue apuntando a las 5 imágenes que sí existen en `public/`:
-  `/history-workshop-light.png`, `/history-founders.jpg`, `/history-installation.jpg`,
-  `/history-family.jpg`, `/history-first-build.jpg`. Es material real de archivo y funciona.
-- `/historia` se ve bien hoy. No hay nada roto.
-
-Decisión pendiente del usuario: revisar las 41 fotos, elegir las que sirvan y decidir el
-destino. Requiere criterio humano, no una tarea de agente.
-
-### 5.4 Handlers archivados
+Nuevo script de red de seguridad: `infra/scripts/assets-huerfanos.mjs` (solo lectura) lista archivos de `public/` sin referencias en `app/`, `components/`, `content/`, `lib/`, `hooks/`, `tests/`.
 
 `app/api/cotizaciones/**` (salvo `link/[token]`), `app/api/materiales/**` y `app/api/proyectos/**`
 son 26 Route Handlers que responden `404` o lista vacía, marcados en el código con el
@@ -316,7 +318,12 @@ El sitio funciona con placeholders. Cuando el usuario entregue el material, apli
 1. `lib/contact.ts` — reemplazar los marcadores `<...>` y poner `SEDE_PENDIENTE_DATOS` en `false`.
    Ese flag es un `IIFE` que detecta los marcadores: no basta con borrar los strings.
 2. `public/equipo/{santiago,natalia,esteban}.jpg` — fotos reales 800×1000.
-3. `public/sede/` — `hero.png`, `poster-taller.png`, `video-taller.mp4`, `foto-1..3.jpg`.
+3. `public/sede/` — material ya sustituido: `hero-sede.png`, `video-poster.png`,
+   `sede-mostrador.jpg`, `sede-sofa.jpg`, `sede-escritorio.jpg`, `sede-equipo.jpg`,
+   `sede-mostrador-espejo.jpg`, `sede-herramientas.jpg` y `video-taller.mp4`
+   (1920×1080, 4.4 s). Los originales `16850a94-e132-4c00-83f5-03da21ace4f2.jpg`
+   (en `fotos_proyectos_anttiguos/`) venían rotados 90°
+   antihorario: se reexportaron con `sips -r 90`.
 4. `public/agenda/modalidades.mp4` + `modalidades-poster.png`.
 
 Cada carpeta tiene su `README.md` con las medidas objetivo: leerlo antes de sustituir.

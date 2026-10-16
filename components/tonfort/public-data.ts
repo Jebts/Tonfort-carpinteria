@@ -23,13 +23,13 @@ export const BAND_SEDE: Record<SedeTaller, BandSede> = {
     src: "/tonfort-hero-plant.png",
     eyebrow: "Santa Marta",
     title: "Donde la luz llega primero.",
-    copy: "El taller y los proyectos que salieron de esta costa.",
+    copy: "El taller y los proyectos que nacieron aquí.",
   },
   bogota: {
     src: "/history-workshop-light.png",
     eyebrow: "Bogotá",
-    title: "Antes de la costa.",
-    copy: "Los primeros trabajos, cuando el taller era otro.",
+    title: "Todo empezó en Bogotá.",
+    copy: "Los primeros proyectos, antes de que el taller se mudara a Santa Marta.",
   },
 }
 

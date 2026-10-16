@@ -1,12 +1,13 @@
+import { FondoBurbujas } from "@/components/tonfort/landing/fondo-burbujas"
 import { ButtonLink } from "@/components/tonfort/public-animations"
 import { AGENDA_CTA } from "@/content/landing"
 
-// Cierre de la landing. Fondo navy con glow beige: en oscuro el acento es el
-// beige (design system §2.6), nunca navy sobre navy.
+// Cierre de la landing. Navy con el fondo de burbujas: el video va detrás del
+// copy y se carga diferido (ver `fondo-burbujas.tsx`).
 export function AgendaCta() {
   return (
-    <section className="relative overflow-hidden bg-brand-navy section-y">
-      <div className="tonfort-beige-glow pointer-events-none absolute left-1/2 top-1/2 size-[38rem] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.10] blur-[120px]" />
+    <section className="relative isolate overflow-hidden bg-brand-navy section-y">
+      <FondoBurbujas />
 
       <div className="relative mx-auto max-w-4xl px-6 text-center md:px-10">
         <p className="eyebrow mb-5 text-warm-light">{AGENDA_CTA.eyebrow}</p>

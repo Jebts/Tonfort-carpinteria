@@ -39,7 +39,7 @@ export function SelectorModalidad({ opciones }: { opciones: ModalidadOpcion[] })
   return (
     <div className="lg:grid lg:grid-cols-12 lg:gap-14">
       {/* Columna izquierda: video explicativo */}
-      <div className="lg:col-span-6">
+      <div className="lg:col-span-8">
         <div className="overflow-hidden rounded-2xl border border-[#E8DFD0] shadow-[0_16px_32px_rgba(11,29,58,.05),0_4px_12px_rgba(11,29,58,.07)]">
           <div className="aspect-video">
             <video
@@ -74,7 +74,7 @@ export function SelectorModalidad({ opciones }: { opciones: ModalidadOpcion[] })
       </div>
 
       {/* Columna derecha: selección */}
-      <div className="mt-12 lg:col-span-6 lg:mt-0">
+      <div className="mt-12 lg:col-span-4 lg:mt-0">
         {/* Es UI, no display: Montserrat pesado, no Arvo (§14.2 del design system). */}
         <h1 className="font-sans text-4xl font-bold leading-tight tracking-[-0.02em] text-[#0B1D3A] md:text-5xl">
           ¿Cómo quieres empezar?

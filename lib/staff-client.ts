@@ -2,7 +2,19 @@
 // Solo incluye los servicios del nuevo esquema video-only.
 // Los servicios legacy de cotizaciones/materiales se eliminaron.
 
-import type { Cliente, Cita, Proyecto, Producto, Propuesta3D, Propuesta3DAnimacion } from "@/lib/supabase/types"
+import type { Cliente, Cita, Proyecto, Producto, Propuesta3D, Propuesta3DAnimacion, ModalidadCita } from "@/lib/supabase/types"
+import type { DisponibilidadSlot } from "@/lib/citas-service"
+import { BLOQUES } from "@/lib/agenda"
+import { addDays } from "date-fns"
+
+// Error de una ruta staff conservando lo que el servidor devolvió: `pendientes`
+// (qué hay que resolver para confirmar) y `conflicto` son datos que la UI
+// necesita para abrir el diálogo, no solo el texto del mensaje.
+export interface ErrorCita extends Error {
+  status: number
+  pendientes?: { id: string; nombre: string | null; fecha_hora: string }[]
+  conflicto?: { id: string; nombre: string | null }
+}
 
 async function req<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -10,8 +22,16 @@ async function req<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
   })
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error((data as { error?: string }).error ?? `Error ${res.status}`)
+    const data = (await res.json().catch(() => ({}))) as {
+      error?: string
+      pendientes?: { id: string; nombre: string | null; fecha_hora: string }[]
+      conflicto?: { id: string; nombre: string | null }
+    }
+    const error = new Error(data.error ?? `Error ${res.status}`) as ErrorCita
+    error.status = res.status
+    error.pendientes = data.pendientes
+    error.conflicto = data.conflicto
+    throw error
   }
   return res.json() as Promise<T>
 }
@@ -42,22 +62,87 @@ export async function eliminarCliente(id: string): Promise<void> {
 }
 
 // --- Citas ---
-export async function getCitas(desde: Date, hasta: Date, cliente?: string): Promise<{ slots: unknown[]; citas: Cita[] }> {
+export async function getCitas(
+  desde: Date,
+  hasta: Date,
+  cliente?: string,
+): Promise<{
+  slots: DisponibilidadSlot[]
+  citas: Cita[]
+  modalidades?: ModalidadCita[]
+}> {
   const params = new URLSearchParams({ desde: desde.toISOString(), hasta: hasta.toISOString() })
   if (cliente) params.set("cliente", cliente)
   return req(`/api/staff/citas?${params.toString()}`)
+}
+
+// Bloques libres de un rango amplio: los usan el diálogo de confirmación y el de
+// mover para ofrecer destinos a una `en_espera`.
+//
+// "Libre" se decide con la **misma** regla que `validarSlotLibre` en el
+// servidor —solape por duración real, no coincidencia de hora exacta— para que
+// la lista nunca ofrezca un destino que el backend vaya a rechazar con 409
+// (una `aceptada` de 180 min a las 10:00 ocupa también las 12:00).
+// El cupo es por modalidad; con `modalidadId` en null estorba cualquier
+// `aceptada`, igual que en el servidor. Solo se ofrecen bloques de la retícula.
+export async function getBloquesLibres(
+  desde: Date,
+  hasta: Date,
+  modalidadId?: string | null,
+): Promise<DisponibilidadSlot[]> {
+  const datos = await getCitas(desde, hasta)
+  const minutos = 60_000
+
+  // Intervalos ocupados por una `aceptada` de la modalidad indicada.
+  const ocupados = datos.slots
+    .filter((s) => s.estado === "aceptada")
+    .filter((s) =>
+      s.citas.some(
+        (c) =>
+          c.estado === "aceptada" &&
+          (modalidadId ? (c.modalidad_id ?? null) === modalidadId : true),
+      ),
+    )
+    .map((s) => {
+      const inicio = new Date(s.fecha_hora).getTime()
+      return { inicio, fin: inicio + (s.duracion_minutos ?? 120) * minutos }
+    })
+
+  return datos.slots.filter((slot) => {
+    const hora = slot.fecha_hora.slice(11, 16)
+    if (!BLOQUES.some((b) => b.inicio === hora)) return false
+    const inicio = new Date(slot.fecha_hora).getTime()
+    const fin = inicio + (slot.duracion_minutos ?? 120) * minutos
+    // Intervalos semiabiertos, como en el servidor.
+    return !ocupados.some((o) => o.inicio < fin && o.fin > inicio)
+  })
+}
+
+// Destinos por defecto: desde hoy, 6 semanas.
+export async function getBloquesLibresProximos(
+  modalidadId?: string | null,
+  semanas = 6,
+): Promise<DisponibilidadSlot[]> {
+  const desde = new Date()
+  return getBloquesLibres(desde, addDays(desde, semanas * 7), modalidadId ?? null)
+}
+
+export interface CitaAccionada extends Cita {
+  /** Citas del bloque que hubo que mover/eliminar para poder confirmar. */
+  resueltas?: number
 }
 
 export async function accionCita(
   id: string,
   accion: "aceptar" | "cancelar" | "mover" | "eliminar" | "reenviar",
   fecha_hora?: string,
-): Promise<Cita> {
-  const data = await req<{ cita: Cita }>(`/api/staff/citas/${id}`, {
+  resolucion?: { id: string; accion: "mover" | "eliminar"; fecha_hora?: string }[],
+): Promise<CitaAccionada> {
+  const data = await req<{ cita: Cita; resueltas?: number }>(`/api/staff/citas/${id}`, {
     method: "PATCH",
-    body: JSON.stringify({ accion, fecha_hora }),
+    body: JSON.stringify({ accion, fecha_hora, resolucion }),
   })
-  return data.cita
+  return { ...data.cita, resueltas: data.resueltas }
 }
 
 export async function guardarCita(body: Partial<Cita> & { id?: string }): Promise<Cita> {

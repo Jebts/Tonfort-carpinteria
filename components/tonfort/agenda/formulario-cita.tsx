@@ -178,7 +178,7 @@ export function FormularioCita({
               disabled={!unbloqueado}
               autoComplete="name"
               placeholder="Tu nombre"
-              className="h-12 rounded-xl border-border bg-white text-[#0B1D3A] placeholder:text-[#0B1D3A]/35 focus:border-[#2856c7] focus:ring-2 focus:ring-[#2856c7]/20"
+              className="h-12 rounded-xl border-border bg-white text-[#0B1D3A] placeholder:text-[#0B1D3A]/50 focus:border-[#2856c7] focus:ring-2 focus:ring-[#2856c7]/20"
               {...register("nombre")}
             />
             {errors.nombre && (
@@ -189,7 +189,7 @@ export function FormularioCita({
           <div>
             <Label
               htmlFor="telefono"
-              className="mb-1.5 block text-xs uppercase tracking-[0.18em] text-[#0B1D3A]/70"
+              className="mb-1.5 block text-xs uppercase tracking-[0.18em] text-[#0B1D3A]/80"
             >
               WhatsApp
             </Label>
@@ -200,7 +200,7 @@ export function FormularioCita({
               disabled={!unbloqueado}
               autoComplete="tel"
               placeholder="+57 (___) ___-____"
-              className="h-12 rounded-xl border-border bg-white text-[#0B1D3A] placeholder:text-[#0B1D3A]/35 focus:border-[#2856c7] focus:ring-2 focus:ring-[#2856c7]/20"
+              className="h-12 rounded-xl border-border bg-white text-[#0B1D3A] placeholder:text-[#0B1D3A]/50 focus:border-[#2856c7] focus:ring-2 focus:ring-[#2856c7]/20"
               {...register("telefono", {
                 onChange: (e) => setValue("telefono", maskTelefono(e.target.value), {
                   shouldValidate: false,
@@ -216,11 +216,11 @@ export function FormularioCita({
             <div className="mb-1.5 flex items-baseline justify-between">
               <Label
                 htmlFor="descripcion"
-                className="text-xs uppercase tracking-[0.18em] text-[#0B1D3A]/70"
+                className="text-xs uppercase tracking-[0.18em] text-[#0B1D3A]/80"
               >
                 Descripción del proyecto
               </Label>
-              <span className="text-xs tabular-nums text-[#0B1D3A]/40">
+              <span className="text-xs tabular-nums text-[#0B1D3A]/60">
                 {descripcion.length}/{MAX_DESCRIPCION}
               </span>
             </div>
@@ -230,7 +230,7 @@ export function FormularioCita({
               rows={3}
               maxLength={MAX_DESCRIPCION}
               placeholder="Opcional. Cuéntanos qué quieres hacer."
-              className="resize-none rounded-xl border-border bg-white text-[#0B1D3A] placeholder:text-[#0B1D3A]/35 focus:border-[#2856c7] focus:ring-2 focus:ring-[#2856c7]/20"
+              className="resize-none rounded-xl border-border bg-white text-[#0B1D3A] placeholder:text-[#0B1D3A]/50 focus:border-[#2856c7] focus:ring-2 focus:ring-[#2856c7]/20"
               {...register("descripcion")}
             />
             {errors.descripcion && (
@@ -246,7 +246,7 @@ export function FormularioCita({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl bg-[#F7F4EE]/70 text-center backdrop-blur-[2px]"
+              className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl bg-white/80 text-center backdrop-blur-[2px]"
             >
               <CalendarCheck className="size-6 text-[#2856c7]" aria-hidden />
               <p className="px-6 text-sm font-medium text-[#0B1D3A]">
@@ -264,14 +264,14 @@ export function FormularioCita({
           "mt-6 flex h-[52px] w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition-all duration-200 ease-out",
           unbloqueado && !enviando
             ? "bg-[#2856c7] text-white hover:bg-[#1c46a8] active:scale-[.98]"
-            : "cursor-not-allowed bg-[#0B1D3A]/15 text-[#0B1D3A]/45",
+            : "cursor-not-allowed bg-[#0B1D3A]/25 text-[#0B1D3A]/70",
         )}
       >
         {enviando && <Loader2 className="size-4 animate-spin" aria-hidden />}
         Confirmar
       </button>
 
-      <p className="mt-3 text-center text-xs text-[#0B1D3A]/45">
+      <p className="mt-3 text-center text-xs text-[#0B1D3A]/60">
         Te respondemos por WhatsApp. Sin compromiso.
       </p>
     </form>

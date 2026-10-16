@@ -45,6 +45,19 @@ const TABLAS_ESPERADAS = [
   'visores_landing_animaciones',
 ]
 
+// Existen en la BD pero no las necesita el flujo mínimo: se informan, no
+// bloquean. `proyectos_visores` quedó pendiente de aplicar
+// (`20261012000000_proyectos_visores.sql`); la galería del panel degrada sola
+// si falta, pero el visor de Santa Marta no funciona sin ella.
+const TABLAS_OPCIONALES = [
+  'cotizaciones',
+  'cotizacion_productos',
+  'cotizacion_producto_versiones',
+  'proyectos_visores',
+]
+
+const BUCKETS_ESPERADOS = ['visores-video', 'portafolio-imagenes']
+
 const TABLAS_LEGACY_ELIMINADAS = [
   'portafolio_proyectos',
   'propuestas_diseno',
@@ -85,12 +98,23 @@ async function getTableCount(tableName) {
 async function main() {
   console.log('=== Verificación de tablas de la base de datos ===\n')
 
+  const faltan = []
+  const sobran = []
+
   console.log('Tablas esperadas (deben existir):')
   console.log('-'.repeat(50))
   for (const tabla of TABLAS_ESPERADAS) {
     const exists = await tableExists(tabla)
     const status = exists ? '✓ OK' : '✗ FALTA'
     console.log(`  ${tabla}: ${status}`)
+    if (!exists) faltan.push(tabla)
+  }
+
+  console.log('\nTablas opcionales (no bloquean):')
+  console.log('-'.repeat(50))
+  for (const tabla of TABLAS_OPCIONALES) {
+    const exists = await tableExists(tabla)
+    console.log(`  ${tabla}: ${exists ? '✓ OK' : '· ausente'}`)
   }
 
   console.log('\nTablas legacy (deben estar eliminadas):')
@@ -100,6 +124,7 @@ async function main() {
       const exists = await tableExists(tabla)
       const status = exists ? '✗ SIGUE EXISTIENDO' : '✓ Eliminada'
       console.log(`  ${tabla}: ${status}`)
+      if (exists) sobran.push(tabla)
     } catch {
       console.log(`  ${tabla}: ✓ Eliminada`)
     }
@@ -116,19 +141,30 @@ async function main() {
     }
   }
 
-  // Verificar bucket visores-video
+  // Verificar buckets
   console.log('\nStorage buckets:')
   console.log('-'.repeat(50))
   const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets()
   if (bucketsError) {
     console.log(`  Error listando buckets: ${bucketsError.message}`)
+    faltan.push(`buckets (${bucketsError.message})`)
   } else {
-    const expectedBucket = 'visores-video'
-    const hasBucket = buckets?.some(b => b.name === expectedBucket)
-    console.log(`  ${expectedBucket}: ${hasBucket ? '✓ OK' : '✗ FALTA'}`)
+    for (const expectedBucket of BUCKETS_ESPERADOS) {
+      const hasBucket = buckets?.some(b => b.name === expectedBucket)
+      console.log(`  ${expectedBucket}: ${hasBucket ? '✓ OK' : '✗ FALTA'}`)
+      if (!hasBucket) faltan.push(`bucket ${expectedBucket}`)
+    }
   }
 
   console.log('\n=== Verificación completa ===')
+
+  // Sale con código 1 si algo no cuadra: es la última puerta del reinit.
+  if (faltan.length > 0 || sobran.length > 0) {
+    console.error(`\n✗ Faltan: ${faltan.join(', ') || 'nada'}`)
+    console.error(`✗ Sobran: ${sobran.join(', ') || 'nada'}`)
+    console.error('Aplica las migraciones con `npm run db:migrate`.')
+    process.exit(1)
+  }
 }
 
 main().catch((e) => { console.error(e); process.exit(1) })

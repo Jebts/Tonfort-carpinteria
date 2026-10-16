@@ -4,7 +4,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
+/* El bloque de tokens claros se declara también para `.modo-claro`: la agenda
+   pública es el único flujo en claro, y con `.dark` en <html> la grilla (que usa
+   tokens semánticos) se pintaba oscura dentro de una página clara. Al ser un
+   descendiente, este ámbito vuelve a establecer los valores claros para su
+   subtree sin afectar al resto del sitio. */
+:root,
+.modo-claro {
   /* Brand palette — navy, beige, black, white */
   --brand-navy: #0B1D3A;
   --brand-beige: #E8DFD0;
@@ -29,7 +35,7 @@
   --primary-foreground: #FFFFFF;
   --secondary: #E8DFD0;
   --secondary-foreground: #0B1D3A;
-  --muted: #F7F4EE;
+  --muted: #FFFFFF;
   --muted-foreground: #7A7A7A;
   --accent: #0B1D3A;
   --accent-foreground: #FFFFFF;
@@ -281,6 +287,19 @@
     );
   }
 
+  /* Igual que `.tonfort-beige-glow` pero ya difuminado en el propio gradiente:
+     no usa `filter: blur()`, que repinta en cada frame dentro de una sección
+     ligada al scroll. Para superficies grandes (32-38rem). */
+  .tonfort-beige-haze {
+    background: radial-gradient(
+      circle,
+      rgba(232, 223, 208, 0.9) 0%,
+      rgba(232, 223, 208, 0.42) 28%,
+      rgba(232, 223, 208, 0.14) 50%,
+      transparent 72%
+    );
+  }
+
   /* .tonfort-gradient sigue usando --royal-bright (#3769e6) como stop central. */
 
   .tonfort-gradient {
@@ -288,12 +307,23 @@
     animation: tonfort-gradient-flow 8s ease-in-out infinite alternate;
   }
 
-  /* Variante clara: el mismo flujo sobre fondos blancos/cremas */
+  /* Variante clara: el mismo flujo sobre fondos blancos/cremas y sobre el velo
+     blanco de las bandas cinematográficas. Los stops son TODOS oscuros y
+     saturados a propósito: la versión anterior llevaba un oliva apagado
+     (`#8a6a2f`) y un oro mate (`#b5892f`) que, al pasar bajo el texto con el
+     flujo, se fundían con el fondo y la palabra desaparecía. navy → royal →
+     royal-bright → bronce → ámbar → ámbar profundo mantiene contraste ≥3:1
+     tanto sobre blanco como sobre el velo; el bronce oscuro es el puente entre
+     el azul y el ámbar, porque sin él la mezcla pasaba por un gris desaturado
+     que apagaba la palabra. */
   .tonfort-gradient-light {
-    background-image: linear-gradient(105deg, #0b1d3a 0%, #2856c7 34%, #8a6a2f 62%, #b5892f 82%, #0b1d3a 100%);
+    background-image: linear-gradient(105deg, #0b1d3a 0%, #2856c7 26%, #3769e6 42%, #6b4a12 58%, #a86f14 72%, #7a4f0a 90%, #0b1d3a 100%);
     animation: tonfort-gradient-flow 8s ease-in-out infinite alternate;
   }
 
+  /* La onda infinita solo corre con `[data-vivo="true"]`, que pone el
+     IntersectionObserver de la sección que la contiene. Fuera de viewport el
+     `filter: blur(18px) contrast(1.15)` sigue aplicando pero no se repinta. */
   .tonfort-fabric {
     background: radial-gradient(ellipse at 18% 55%, rgba(55,105,230,.95) 0 7%, transparent 26%),
                 radial-gradient(ellipse at 72% 42%, rgba(20,45,140,.8) 0 9%, transparent 31%),
@@ -301,6 +331,10 @@
                 #02040b;
     filter: blur(18px) contrast(1.15);
     transform: skewY(-3deg);
+    will-change: transform;
+  }
+
+  .tonfort-fabric[data-vivo="true"] {
     animation: tonfort-fabric-wave 9s ease-in-out infinite alternate;
   }
 
@@ -355,6 +389,44 @@
   }
 
   /*
+   * Transición de desplazamiento entre visores del carrusel de la landing.
+   * El contenedor se re-monta con `key` al cambiar de diapositiva, así que la
+   * animación se reproduce siempre: el visor entrante llega desde el lado del
+   * que se navegó, con un fundido y un leve escala para que no sea un corte.
+   */
+  @keyframes tonfort-visor-in-next {
+    from { opacity: 0; transform: translate3d(7%, 0, 0) scale(0.985); }
+    to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  }
+
+  @keyframes tonfort-visor-in-prev {
+    from { opacity: 0; transform: translate3d(-7%, 0, 0) scale(0.985); }
+    to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  }
+
+  .tonfort-visor-next {
+    animation: tonfort-visor-in-next 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .tonfort-visor-prev {
+    animation: tonfort-visor-in-prev 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /*
+   * Salida de la diapositiva reemplazada. Se queda en su sitio y solo pierde
+   * opacidad: es la capa que tapaba el hueco mientras la entrante decodificaba,
+   * así que retirarla de golpe devolvería el parpadeo negro.
+   */
+  @keyframes tonfort-visor-out {
+    from { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+    to { opacity: 0; transform: translate3d(0, 0, 0) scale(0.99); }
+  }
+
+  .tonfort-visor-out {
+    animation: tonfort-visor-out 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /*
    * Red de seguridad: los componentes de motion/react escriben estilos inline
    * en el estado inicial (opacity:0, translateY, scale). Si el bundle cliente
    * no hidrata, esos estilos congelan la página en blanco. Mientras la clase
@@ -372,6 +444,25 @@
       animation-duration: .01ms !important;
       animation-iteration-count: 1 !important;
       scroll-behavior: auto !important;
+    }
+
+    html {
+      scroll-behavior: auto !important;
+    }
+
+    /* Las ondas infinitas se apagan del todo: con `animation-duration` a
+       .01ms la onda de la tela dejaba el `skewY(4deg)` congelado. */
+    .tonfort-fabric,
+    .tonfort-fabric[data-vivo="true"],
+    .tonfort-led-glow,
+    .tonfort-gradient,
+    .tonfort-gradient-light,
+    .tonfort-about-wave-one,
+    .tonfort-about-wave-two,
+    .tonfort-visor-next,
+    .tonfort-visor-prev,
+    .tonfort-visor-out {
+      animation: none !important;
     }
   }
 }

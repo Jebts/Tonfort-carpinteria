@@ -44,6 +44,7 @@ const sections: SidebarSection[] = [
       { href: "/staff/administracion/cotizaciones", label: "Cotizaciones", icon: ReceiptText },
       { href: "/staff/administracion/usuarios", label: "Usuarios", icon: UserCog },
       { href: "/staff/administracion/portafolio", label: "Portafolio", icon: FolderKanban },
+      { href: "/staff/administracion/visores", label: "Visores landing", icon: Box },
     ],
   },
   {
@@ -61,7 +62,6 @@ const sections: SidebarSection[] = [
     roles: ["admin", "disenador"],
     items: [
       { href: "/staff/diseno/proyectos", label: "Proyectos", icon: FolderKanban },
-      { href: "/staff/diseno/visores", label: "Visores landing", icon: Box },
     ],
   },
 ]

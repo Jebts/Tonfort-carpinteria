@@ -25,11 +25,11 @@ Estado verificado sobre `app/` tras el refactor del espacio público (Ola 2 del 
 
 | Ruta | Tipo | Descripción |
 |---|---|---|
-| `/` | Server Component | Landing (hero, 2 visores `LandingVisor`, luz, proyectos recientes, equipo, CTA de agenda, footer) |
+| `/` | Server Component | Landing (hero, luz, carrusel `VisoresCarousel`, proyectos recientes, equipo, CTA de agenda, footer) |
 | `/sede` | Server Component | Página de la sede: ubicación, mapa, datos de contacto de `lib/contact.ts` |
 | `/historia` | Server Component | Narrativa de marca y filosofía (`content/historia.ts`) |
-| `/portafolio` | redirect 307 | Redirige a `/portafolio/santa-marta` (alias de la sede principal) |
-| `/portafolio/[sede]` | Server Component (`force-dynamic`) | Catálogo de la sede. Acepta `?categoria=<categoria_mueble>`; un valor fuera del catálogo cerrado cae en "Todos". Slugs válidos: `santa-marta`, `bogota` |
+| `/portafolio` | Server Component (`force-dynamic`) | Catálogo único con las dos listas: Santa Marta arriba y Bogotá abajo. Acepta `?categoria=<categoria_mueble>`; un valor fuera del catálogo cerrado cae en "Todos" |
+| `/portafolio/[sede]` | redirect 308 | Redirige a `/portafolio` conservando `?categoria=`. Slugs válidos: `santa-marta`, `bogota` (cualquier otro es 404). El portafolio ya no se parte por sede |
 | `/portafolio/[sede]/[slug]` | Server Component (`force-dynamic`) | Ficha plana del proyecto: portada a sangre, galería de `proyectos_fotos` y visor opcional. Sin datos de cliente ni de staff asignado |
 | `/agenda` | redirect 307 | Redirige a `/agenda/modalidad` |
 | `/agenda/modalidad` | Server Component | Paso 1: elección de modalidad (`virtual` / `presencial`) y del diseñador |
@@ -51,7 +51,7 @@ Rutas del panel de staff (`/staff/**`) y sus aliases legacy en `docs/10_Sitemap_
 Ya **no existen** y no deben enlazarse desde ningún sitio:
 
 - `/portafolio/proyectos/[slug]` y todo su subárbol `productos/**`. El portafolio público es
-  ahora plano y se publica por sede: `/portafolio/[sede]/[slug]`.
+   ahora plano y la ficha vive en `/portafolio/[sede]/[slug]`.
 - `app/cotizacion/` (sin "s") era un `redirect("/portafolio")` huérfano; se eliminó. La ruta viva
   de la vista pública de cotizaciones es `app/cotizaciones/[token]`.
 
@@ -82,14 +82,14 @@ Ya **no existen** y no deben enlazarse desde ningún sitio:
 | `POST` | `/api/staff/ai-suggest` | any staff | Asistente IA (redacción de portafolio) |
 | `GET`/`POST` | `/api/staff/clientes` | admin\|asesor | Lista / crea clientes |
 | `GET`/`PUT`/`DELETE` | `/api/staff/clientes/[id]` | admin\|asesor | Lee / edita / elimina cliente |
-| `GET`/`POST` | `/api/staff/citas` | admin\|asesor | Lista / crea cita interna |
+| `GET`/`POST` | `/api/staff/citas` | admin\|asesor | Lista (`slots` + `citas` + `modalidades`) / crea cita interna (rechaza `estado: "aceptada"`, 422; cupo por modalidad y duración real) |
 | `PATCH`/`PUT`/`DELETE` | `/api/staff/citas/[id]` | admin\|asesor | Acciones `aceptar`/`cancelar`/`mover`/`eliminar`/`reenviar` y edición de campos (`citaStaffSchema.partial()`, incluye `direccion`) |
 | `GET`/`POST` | `/api/staff/usuarios` | admin | Lista y crea usuarios staff |
 | `GET`/`PUT`/`DELETE` | `/api/staff/usuarios/[id]` | admin | Edita o desactiva usuario staff |
-| `GET` | `/api/staff/diseno/visores-landing` | admin\|disenador | Lista los 2 visores de la landing con sus animaciones, ordenados |
-| `PUT` | `/api/staff/diseno/visores-landing` | admin | Upsert por `slot` (`primero` / `segundo`) |
-| `GET`/`POST` | `/api/staff/diseno/visores-landing/[slot]/animaciones` | admin\|disenador | Lista y crea animaciones del visor |
-| `POST` | `/api/staff/diseno/visores-landing/[slot]/upload-global-video` | admin\|disenador | Sube el video global del visor a `visores-video` |
+| `GET`/`POST` | `/api/staff/administracion/visores-landing` | admin | Lista los visores del carrusel con sus animaciones, ordenados por `orden` / crea un visor al final |
+| `PATCH`/`DELETE` | `/api/staff/administracion/visores-landing/[id]` | admin | Edita (o reordena, con un `PATCH` de la sola clave `orden`) y elimina un visor |
+| `GET`/`POST` | `/api/staff/administracion/visores-landing/[id]/animaciones` | admin | Lista y crea animaciones del visor |
+| `POST` | `/api/staff/administracion/visores-landing/[id]/upload-global-video` | admin | Sube el video global del visor a `visores-video` |
 | `GET`/`POST` | `/api/staff/diseno/proyectos` | admin\|disenador | Lista proyectos para diseño / crea proyecto de diseño |
 | `GET`/`PATCH`/`DELETE` | `/api/staff/diseno/proyectos/[id]` | admin\|disenador | Detalle, edición y borrado de proyecto de diseño |
 | `GET`/`POST` | `.../productos` | admin\|disenador | Lista y crea productos |
@@ -135,17 +135,49 @@ bloque para una cita `presencial`, y viceversa.
 
 `PATCH /api/staff/citas/[id]` body:
 ```json
-{ "accion": "aceptar" | "cancelar" | "mover" | "eliminar" | "reenviar", "fecha_hora"?: "ISO" }
+{ "accion": "aceptar" | "cancelar" | "mover" | "eliminar" | "reenviar", "fecha_hora"?: "ISO",
+  "resolucion"?: [{ "id": "uuid", "accion": "mover" | "eliminar", "fecha_hora"?: "ISO" }] }
 ```
+
+Confirmar (`aceptar`) cierra el bloque y obliga a resolver el resto de la misma `fecha_hora` +
+`modalidad_id`:
+
+- sin `resolucion` y con otras `en_espera` en el bloque → **422** con `{ error, pendientes: [{ id, nombre, fecha_hora }] }`
+  (la UI abre `components/tonfort/agenda/dialogo-bloque.tsx`).
+- `resolucion` que no cubre todas y ninguna extra → **422**.
+- bloque con otra `aceptada`, o destino de una mudanza ocupado → **409** con `conflicto`.
+- éxito → **200** `{ cita, resueltas }` (nº de en_espera movidas o eliminadas).
+
+`POST /api/staff/citas` rechaza `estado: "aceptada"` con **422**: toda `aceptada` pasa por la
+confirmación del bloque. El cupo se valida con la **duración real** (`duracion_minutos`, 120 por
+defecto) y por modalidad. `GET /api/staff/citas` añade `modalidades` (catálogo activo) a la
+respuesta.
 
 Sin `accion`, el mismo handler valida el cuerpo con `citaStaffSchema.partial()` para editar
 campos de la cita, entre ellos `direccion` (máx. 400 caracteres, nullable), `modalidad_id`,
 `notas`, `telefono` y `descripcion`.
 
+`GET /api/citas` y `GET /api/staff/citas` devuelven en cada slot los contadores `enEspera` y
+`canceladas` (número de citas del bloque por estado, sin datos).
+
+### La grilla de la agenda (público y staff comparten componente)
+
+- `components/tonfort/agenda/grilla-bloques.tsx` es la retícula: 4 bloques (`BLOQUES`) × Lun–Sáb,
+  con navegación anterior/siguiente/Hoy y el contenido de cada celda por `renderCelda` (children
+  pattern). La usa `/agenda/horario` (público, vía `calendario.tsx`) y `/staff/gestion/agenda`.
+- `lib/agenda.ts` concentra la aritmética UTC: `inicioSemana` (idempotente), `fechaDeCelda`,
+  `celdasDeSemana` y `slotKey`. Staff ya no usa `startOfDay`/`endOfDay`/`isWithinInterval` en hora
+  local: el rango que pide a la API es `desde = inicioSemana(lunes 00:00Z)`,
+  `hasta = desde + 7 días`.
+- En staff, la celda resume el bloque con círculos de contador y al hacer clic abre
+  `components/tonfort/agenda/dialogo-bloque.tsx` (detalle de cada cita + confirmación/mover). El `+`
+  solo aparece en bloques sin `aceptada`; en el público, `en_espera` **no** bloquea (solo
+  `aceptada`). Las citas fuera de bloque se listan aparte (no entran en la regla de cupo).
+
 ## Aviso: esquema pendiente de aplicar
 
 Las rutas de la Ola 2 (`.../proyectos/[id]/fotos[/[fotoId]]`, `/api/public/visores-landing`,
-`/api/staff/diseno/visores-landing/**`) ya están en el código, pero **las tablas que usan no
+`/api/staff/administracion/visores-landing/**`) ya están en el código, pero **las tablas que usan no
 existen todavía en la BD real**. `npm run db:check` devuelve `✗ FALTA` para `citas`,
 `proyectos_fotos`, `visores_landing` y `visores_landing_animaciones`. Ver
 `docs/02_modelo_datos.md` §7 y `docs/05_auditoria.md` §5.

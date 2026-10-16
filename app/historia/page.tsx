@@ -10,11 +10,11 @@ import {
 } from "@/components/tonfort/public-animations"
 import { HistoriaCarousel } from "@/components/tonfort/historia-carousel"
 import { Heart, Ruler, ShieldCheck, Sparkles } from "lucide-react"
-import { BLOQUES_HISTORIA } from "@/content/historia"
+import { BLOQUES_HISTORIA, HISTORIA_HERO } from "@/content/historia"
 
 const EYEBROW = "text-[10px] uppercase tracking-[.34em] text-[#2856c7]"
 const HEADING = "mt-5 text-5xl font-medium leading-[.92] tracking-[-.07em] text-[#0B1D3A] md:text-7xl"
-const COPY = "text-lg leading-7 text-[#4A5163]"
+const COPY = "text-lg leading-7 text-[#2D3A4A]"
 
 export default function HistoriaPage() {
   const valores = [
@@ -25,14 +25,27 @@ export default function HistoriaPage() {
   ]
 
   return (
-    <main className="bg-[#F7F4EE] text-[#0B1D3A]">
+    <main className="bg-white text-[#0B1D3A]">
       <PublicNavbar tone="light" />
+      {/* El carrusel abre la página: es la foto más honesta del origen. */}
+      <section className="relative bg-white px-6 pt-24 pb-20 md:px-10 md:pt-32 md:pb-32">
+        <Reveal className="mx-auto mb-14 max-w-4xl text-center md:mb-16">
+          <h2 className={HEADING}>
+            Todo empezó<br />
+            <GradientText tone="light">en Bogotá.</GradientText>
+          </h2>
+          <p className={`mx-auto mt-8 max-w-xl ${COPY}`}>
+            Antes de Santa Marta hubo un banco de trabajo, un altillo y mucha
+            madera. Este es el archivo de lo que salió de ahí.
+          </p>
+        </Reveal>
+        <HistoriaCarousel />
+      </section>
+      {/* Hero: solo el titular. Sin antetítulo ni bajada, para no cargar la vista
+          y dejar que la foto se lea. */}
       <CinematicBand
-        src="/history-workshop-light.png"
-        eyebrow="Nuestra historia"
-        title="La luz vuelve a
-        encenderse."
-        copy="Un espacio bien iluminado cambia la manera de habitarlo."
+        src="/historia/hero.jpg"
+        title={HISTORIA_HERO.titulo}
         align="left"
         tone="light"
       />
@@ -40,8 +53,8 @@ export default function HistoriaPage() {
         <Reveal className="mx-auto max-w-4xl text-center">
           <p className={EYEBROW}>Filosofía</p>
           <h2 className={HEADING}>
-            No empezamos con una marca.<br />
-            Empezamos con una mesa.
+            <GradientText tone="light">No empezamos con una marca.</GradientText><br />
+            <GradientText tone="light">Empezamos con una mesa.</GradientText>
           </h2>
         </Reveal>
       </section>
@@ -72,7 +85,7 @@ export default function HistoriaPage() {
           ))}
         </div>
       </section>
-      <section className="relative border-y border-[#E8DFD0] bg-[#F7F4EE] px-6 py-24 md:px-10 md:py-40">
+      <section className="relative border-y border-[#E8DFD0] bg-white px-6 py-24 md:px-10 md:py-40">
         <Reveal className="mx-auto mb-20 max-w-4xl text-center">
           <p className={EYEBROW}>Lo que nos guía</p>
           <h2 className={HEADING}>
@@ -96,17 +109,7 @@ export default function HistoriaPage() {
           </div>
         </div>
       </section>
-      <section className="relative bg-white px-6 py-24 md:px-10 md:py-40">
-        <Reveal className="mx-auto mb-16 max-w-4xl text-center">
-          <p className={EYEBROW}>Proyectos de la época</p>
-          <h2 className={HEADING}>
-            Lo que hicimos<br />
-            <GradientText tone="light">en Bogotá.</GradientText>
-          </h2>
-        </Reveal>
-        <HistoriaCarousel />
-      </section>
-      <section className="relative border-t border-[#E8DFD0] bg-[#F7F4EE] px-6 py-24 md:px-10 md:py-40">
+      <section className="relative border-t border-[#E8DFD0] bg-white px-6 py-24 md:px-10 md:py-40">
         <Reveal className="mx-auto max-w-3xl text-center">
           <h2 className="text-5xl font-medium leading-[.92] tracking-[-.07em] text-[#0B1D3A] md:text-7xl">
             Tu espacio<br />

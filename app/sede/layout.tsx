@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Sede · Tonfort Santa Marta",
     description: "El taller de Tonfort en Santa Marta. Diseño y fabricación de muebles a medida.",
-    images: [{ url: "/sede/hero.png" }],
+    images: [{ url: "/sede/hero-sede.png", width: 1920, height: 1080, alt: "La sede de Tonfort en Santa Marta" }],
   },
 }
 

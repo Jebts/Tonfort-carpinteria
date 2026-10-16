@@ -19,7 +19,7 @@ El sistema distingue tres roles de staff, definidos en la tabla `usuarios` (camp
 | Publicar proyecto en Portafolio (`publicado`) | ❌ | ✅ | ❌ |
 | Editar `sede` / `categoria` / `portada_url` de un proyecto publicado | ❌ | ✅ | ❌ |
 | Subir / borrar fotos de la galería del proyecto | ❌ | ✅ | ❌ |
-| Editar los visores de la landing (`/staff/diseno/visores`) | Lectura | **Escritura** (upsert por `slot`) | ❌ |
+| Editar los visores de la landing (`/staff/administracion/visores`) | ❌ | **Lectura y escritura** | ❌ |
 | Crear cotizaciones (conectar proyecto + cliente) | ❌ | ✅ | ❌ |
 | Gestionar agenda y citas | ❌ | ✅ | ✅ |
 | Gestión de usuarios staff (crear/editar/desactivar) | ❌ | ✅ | ❌ |
@@ -73,10 +73,10 @@ El portafolio público ya **no** es un árbol de proyecto → producto → propu
 publicado tiene **una** página, `/portafolio/[sede]/[slug]`, con portada, galería y —si el
 proyecto tiene propuesta publicada— un visor. Consecuencias:
 
-- **Sede** (`proyectos.sede`, catálogo cerrado `santa_marta` / `bogota`): decide en qué rama del
-  portafolio aparece. Es `NOT NULL DEFAULT 'santa_marta'`, así que los proyectos existentes se
+- **Sede** (`proyectos.sede`, catálogo cerrado `santa_marta` / `bogota`): decide en qué lista de
+  `/portafolio` aparece. Es `NOT NULL DEFAULT 'santa_marta'`, así que los proyectos existentes se
   rellenan solos. `bogota` es histórico: la sede ya no existe y solo aporta fotos al catálogo.
-  Cambiar la sede mueve el proyecto entre `/portafolio/santa-marta` y `/portafolio/bogota`.
+  Cambiar la sede mueve el proyecto entre la lista de Santa Marta y la de Bogotá.
 - **Categoría** (`proyectos.categoria`, catálogo cerrado de 7 valores): **un solo valor por
   proyecto**, y **nullable**. Los proyectos existentes salen como "Sin categoría" hasta que
   staff asigne una; ninguno queda fuera del listado por no tenerla, solo del filtro
@@ -166,8 +166,57 @@ El slot se ocupa **por modalidad**, no en bloque:
   ni datos de contacto.
 - `virtual` dura 90 minutos y `presencial` 120: la rejilla de bloques se calcula con la duración
   de la modalidad elegida, no con la de 120 por defecto.
-- `/agenda/horario` sin un `?modalidad=` que resuelva contra el catálogo responde **404**. No es
+- `/agenda/horario` sin un `?modalidad=` que resuelga contra el catálogo responde **404**. No es
   un calendario vacío: es un error de navegación.
+
+### La confirmación cierra el bloque
+
+- `aceptada` es el **único estado que ocupa el bloque**: no se puede crear ni confirmar otra
+  cita en el mismo bloque (`fecha_hora` + `modalidad_id`). Es el cupo real.
+- **`en_espera` no bloquea**: mientras la solicitud no esté confirmada, el público puede seguir
+  pidiendo el mismo bloque (es justo lo que valida `validarSlotLibre`, que solo mira `aceptada`).
+  La grilla lo muestra disponible con un círculo amarillo con el número de solicitudes en espera.
+- **Confirmar obliga a resolver el resto del bloque.** Si al confirmar una `en_espera` hay otras
+  `en_espera` de la misma `fecha_hora` + `modalidad_id`, el `PATCH` responde **422** con la lista
+  de `pendientes` y no cambia nada. Para cada una hay que decir `mover` (¿a qué bloque?) o
+  `eliminar`; si la resolución no cubre **todas y ninguna extra**, responde **422**.
+- La mudanza se hace primero y el `UPDATE` de la elegida al final: si un destino estuviera
+  ocupado (**409**, con el `conflicto`) el bloque queda como estaba.
+- `POST /api/staff/citas` **rechaza `estado: "aceptada"`** (422): toda `aceptada` pasa por la
+  confirmación del bloque. Crear deja la cita en `en_espera`.
+- La aritmética de ocupación (`validarSlotLibre`) usa la **duración real** (`duracion_minutos`
+  de la cita; 120 por defecto), no 2 h fijas: una `virtual` de 08:00 termina a las 09:30 y no
+  tapona lo que empieza después. Los bloques son contiguos por diseño, así que una cita que
+  termina justo cuando empieza la siguiente **no** estorba (intervalos semiabiertos).
+- "Mismo bloque" = misma `fecha_hora` de inicio (`slotKey`) y misma modalidad. Una `presencial`
+  no se mueve porque se confirme una `virtual`: son servicios distintos.
+
+### Cada bloque se resume en círculos y se abre al clic
+
+- La celda no lista las citas: muestra **un círculo por tipo de cita** con cuántas hay en espera —
+  azul `virtual`, verde `presencial`, morado `interna` (sin modalidad), cada uno con anillo amarillo
+  para decir "sigue en espera" — y un círculo gris con cuántas `canceladas`.` Los contadores llegan del servidor
+  (`DisponibilidadSlot.enEspera` / `.canceladas`), calculados antes de filtrar, así que el público
+  ve el número sin recibir ningún dato de contacto.
+- En staff, **al hacer clic en el bloque se abre su detalle**: la lista completa de sus citas con
+  modalidad, origen, estado, teléfono, descripción, Meet, precio/dirección y las acciones de cada
+  una (Confirmar / Mover / Cancelar / Reenviar / Editar / Eliminar). Ahí se ejecuta la dinámica de
+  confirmación: al confirmar una, el resto de `en_espera` del bloque debe moverse o eliminarse,
+  **eligendo el destino de cada una por separado** (`dialogo-bloque.tsx`).
+- El `+` de la celda solo aparece en bloques sin `aceptada`; en el público, la celda con `en_espera`
+  sigue siendo seleccionable.
+
+### La agenda es una sola grilla
+
+- La retícula (`components/tonfort/agenda/grilla-bloques.tsx`) es **una**: la usa
+  `/agenda/horario` (público) y `/staff/gestion/agenda` (staff). No hay parrilla propia de staff.
+- 4 bloques fijos (`BLOQUES`, 08/10/14/16) × **Lun–Sáb**: el domingo no es laborable y no se
+  pinta como columna.
+- **Todo se calcula en UTC** (slots, `slotKey`, semana vía `inicioSemana`): es como se generan
+  los slots y como se guardan `citas.fecha_hora`. Cualquier aritmética en hora local descoloca
+  los bloques (fue el bug de staff: mostraba 05:00 donde la cita era a las 10:00).
+- En staff, las citas que **no** caen en un bloque (p. ej. 09:00 o 21:00) no entran en la regla
+  de cupo por bloque; se listan aparte como "Citas fuera de bloque" para no perderlas de vista.
 
 ### Dirección de la cita presencial
 
@@ -182,12 +231,19 @@ El slot se ocupa **por modalidad**, no en bloque:
 
 ### Acciones sobre citas (staff)
 
-`PATCH /api/staff/citas/[id]` con body `{ "accion": "aceptar" | "cancelar" | "mover" | "eliminar", "fecha_hora"?: "ISO" }`.
+`PATCH /api/staff/citas/[id]` con body `{ "accion": "aceptar" | "cancelar" | "mover" | "eliminar" | "reenviar",
+"fecha_hora"?: "ISO", "resolucion"?: [{ "id": "uuid", "accion": "mover" | "eliminar", "fecha_hora"?: "ISO" }] }`.
 
-- `aceptar` — la cita pasa a `aceptada`, se genera o asigna `meet_link`.
+- `aceptar` — la cita pasa a `aceptada`. Si en el bloque hay otras `en_espera` de la misma
+  modalidad, responde **422** con `pendientes`; la UI abre el diálogo
+  `dialogo-bloque.tsx` y se reintenta con `resolucion`. **409** si el bloque ya tiene
+  otra confirmada. Devuelve `{ cita, resueltas }`.
 - `cancelar` — la cita pasa a `cancelada`.
 - `mover` — reprograma la cita; el campo `movida = true` y `fecha_hora_anterior` guarda la fecha original.
+  Valida el destino con la regla de cupo: **409** (con `conflicto`) si ya hay una `aceptada` de
+  esa modalidad solapando.
 - `eliminar` — elimina físicamente. Solo permitido si la cita está `cancelada` o `en_espera`.
+- `reenviar` — devuelve una `aceptada` a `en_espera`.
 
 Sin `accion`, el mismo handler valida el cuerpo con `citaStaffSchema.partial()` y permite editar
 campos sueltos (`direccion`, `notas`, `telefono`, `descripcion`, `modalidad_id`, …). Es la vía

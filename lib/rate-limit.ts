@@ -25,11 +25,14 @@ export function createRateLimiter(opts: RateLimitOptions) {
   }
 }
 
+// IP del visitante. `x-forwarded-for` lo escribe el cliente *y* lo amplía cada
+// proxy, así que se toma el ÚLTIMO valor (el que añade nuestro proxy), no el
+// primero: si no, cualquiera podría elegir con qué IP se le cuenta el cupo.
 export function getClientIp(req: { headers: Headers }): string | null {
   const xf = req.headers.get("x-forwarded-for")
   if (xf) {
-    const first = xf.split(",")[0]?.trim()
-    if (first) return first
+    const last = xf.split(",").at(-1)?.trim()
+    if (last) return last
   }
   const xri = req.headers.get("x-real-ip")
   if (xri) return xri

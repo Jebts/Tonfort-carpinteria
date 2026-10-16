@@ -1,0 +1,2 @@
+1	RENDERS/LUISA RUIZ 1.jpg	imagen		1368x768
+2	RENDERS/LUISA RUIZ 1.jpg2.jpg	imagen		1368x768

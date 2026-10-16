@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServiceSupabase } from "@/lib/supabase/server"
 import { requireStaff } from "@/lib/staff-auth"
 import { citaAccionSchema, citaStaffSchema } from "@/lib/validators"
-import { validarSlotLibre, getCitasTableName } from "@/lib/citas-service"
+import { validarSlotLibre, getCitasTableName, resolverConfirmacion } from "@/lib/citas-service"
 import type { Cita } from "@/lib/supabase/types"
 import { sanitizeError } from "@/lib/errors"
 
@@ -26,7 +26,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!parse.success) {
     return NextResponse.json({ error: "Acción inválida" }, { status: 422 })
   }
-  const { accion, fecha_hora } = parse.data
+  const { accion, fecha_hora, resolucion } = parse.data
 
   const tableName = await getCitasTableName(supabase)
 
@@ -52,19 +52,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   if (accion === "aceptar") {
-    const validacion = await validarSlotLibre(supabase, actual.fecha_hora, actual.id)
-    if (!validacion.ok) {
-      return NextResponse.json({ error: validacion.error }, { status: 422 })
+    // Confirmar exige resolver el resto del bloque: la cita solo queda
+    // `aceptada` cuando todas las demás `en_espera` del bloque tienen destino.
+    // Sin `resolucion` responde 422 con la lista de pendientes para que la UI
+    // abra el diálogo; 409 si el bloque ya tiene otra confirmada.
+    const resultado = await resolverConfirmacion(supabase, actual as Cita, resolucion)
+    if (!resultado.ok) {
+      return NextResponse.json(
+        {
+          error: resultado.error,
+          ...(resultado.pendientes ? { pendientes: resultado.pendientes } : {}),
+        },
+        { status: resultado.status },
+      )
     }
-
-    const { data, error } = await supabase
-      .from(tableName)
-      .update({ estado: "aceptada" })
-      .eq("id", id)
-      .select()
-      .single()
-    if (error) return NextResponse.json({ error: sanitizeError(error) }, { status: 500 })
-    return NextResponse.json({ cita: data as Cita })
+    return NextResponse.json({ cita: resultado.cita, resueltas: resultado.resueltas })
   }
 
   if (accion === "reenviar") {
@@ -93,10 +95,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!fecha_hora) {
       return NextResponse.json({ error: "Indica la nueva fecha/hora" }, { status: 422 })
     }
+    const destino = new Date(fecha_hora)
+    if (Number.isNaN(destino.getTime())) {
+      return NextResponse.json({ error: "Fecha destino no válida" }, { status: 422 })
+    }
+    // No se puede mover a un bloque que ya tenga una `aceptada` de la misma
+    // modalidad (antes se podía mover encima de una cita confirmada).
+    const validacion = await validarSlotLibre(
+      supabase,
+      fecha_hora,
+      actual.modalidad_id,
+      actual.id,
+      actual.duracion_minutos,
+    )
+    if (!validacion.ok) {
+      return NextResponse.json(
+        { error: validacion.error ?? "Ese bloque ya tiene una cita aceptada", conflicto: validacion.conflicto },
+        { status: 409 },
+      )
+    }
     const { data, error } = await supabase
       .from(tableName)
       .update({
-        fecha_hora: new Date(fecha_hora).toISOString(),
+        fecha_hora: destino.toISOString(),
         fecha_hora_anterior: actual.fecha_hora,
         movida: true,
       })

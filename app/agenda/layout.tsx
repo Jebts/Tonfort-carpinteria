@@ -7,7 +7,9 @@ import { Toaster } from "@/components/ui/sonner"
 // errores de envío.
 export default function AgendaLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col justify-between bg-[#F7F4EE] text-[#0B1D3A]">
+    // `modo-claro` re-establece los tokens claros para todo el flujo: la
+    // retícula usa tokens semánticos y, con el sitio en oscuro, salía oscura.
+    <div className="modo-claro flex min-h-screen flex-col justify-between bg-white text-[#0B1D3A]">
       <PublicNavbar tone="light" />
       <main className="mx-auto w-full max-w-7xl flex-1 px-6 pt-28 lg:px-10 lg:pt-32">
         {children}

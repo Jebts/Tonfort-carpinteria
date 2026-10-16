@@ -1,0 +1,8 @@
+=== Validacion de la organizacion ===
+Proyectos: 190
+Fotos usadas: 552
+Descartes: 843
+Usadas + descartadas: 552 + 843 = 1395 / canonicas: 1395
+(filas de fotos usadas: 577; la diferencia son proyectos de 1 foto donde portada = galeria)
+Archivos copiados al staging: 594
+Sin problemas detectados.

@@ -36,9 +36,14 @@ describe("createRateLimiter", () => {
 })
 
 describe("getClientIp", () => {
-  it("parsea x-forwarded-for (primer valor)", () => {
+  it("toma el último valor de x-forwarded-for (lo escribe el proxy)", () => {
     const req = { headers: new Headers({ "x-forwarded-for": "1.2.3.4, 5.6.7.8" }) }
-    expect(getClientIp(req)).toBe("1.2.3.4")
+    expect(getClientIp(req)).toBe("5.6.7.8")
+  })
+
+  it("ignora un primer valor falsificado cuando hay salto de proxy", () => {
+    const req = { headers: new Headers({ "x-forwarded-for": "9.9.9.9, 10.0.0.1" }) }
+    expect(getClientIp(req)).toBe("10.0.0.1")
   })
 
   it("parsea x-real-ip cuando no hay x-forwarded-for", () => {

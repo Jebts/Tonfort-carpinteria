@@ -56,89 +56,42 @@ export function Hero() {
         style={{ y, opacity }}
         className="relative z-10 mx-auto w-full max-w-7xl px-6 pt-24 md:px-10"
       >
-        <div className="grid items-end gap-10 md:grid-cols-12">
-          {/* Columna izquierda: la identidad */}
-          <div className="md:col-span-7">
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="eyebrow mb-6 text-royal-bright"
-            >
-              {HERO.eyebrow}
-            </motion.p>
-
-            <h1 className="display-xl font-display text-white">
-              {HERO.tituloLineas.map((linea, i) => (
-                <span key={linea} className="block">
-                  {i >= HERO.tituloGradienteDesdeLinea ? (
-                    <GradientText>{linea}</GradientText>
-                  ) : (
-                    linea
-                  )}
-                </span>
-              ))}
-            </h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="mt-7 max-w-sm text-base leading-7 text-copy"
-            >
-              {HERO.bajada}
-            </motion.p>
-
-            {/* En mobile el CTA va debajo de la bajada, a ancho completo. */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="mt-8 md:hidden"
-            >
-              <ButtonLink
-                href="/agenda/modalidad"
-                variant="vivid"
-                size="lg"
-                ariaLabel="Agendar cita"
-                className="w-full"
-              >
-                {HERO.cta}
-              </ButtonLink>
-              <p className="mt-3 text-center text-xs text-copy/70">{HERO.microcopy}</p>
-            </motion.div>
-
-            <div className="mt-8 hidden md:block">
-              <ButtonLink href="/portafolio/santa-marta" primary={false}>
-                {HERO.ctaSecundaria}
-              </ButtonLink>
-            </div>
-          </div>
-
-          {/* Columna derecha: el CTA, siempre visible sin hover */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-            className="md:col-span-4 md:col-start-9 md:justify-self-end md:text-right"
-          >
-            <ButtonLink
-              href="/agenda/modalidad"
-              variant="vivid"
-              size="lg"
-              ariaLabel="Agendar cita"
-              className="hidden md:inline-flex"
-            >
-              {HERO.cta}
-            </ButtonLink>
-            <p className="mt-3 hidden text-xs text-copy/70 md:block">{HERO.microcopy}</p>
-          </motion.div>
+        {/* Título arriba, CTAs en su propia fila centrada debajo. */}
+        <div className="md:-mt-6">
+          <h1 className="display-xl font-display text-white">
+            {HERO.tituloLineas.map((linea, i) => (
+              <span key={linea} className="block">
+                {i >= HERO.tituloGradienteDesdeLinea ? (
+                  <GradientText>{linea}</GradientText>
+                ) : (
+                  linea
+                )}
+              </span>
+            ))}
+          </h1>
         </div>
-      </motion.div>
 
-      <div className="absolute bottom-8 right-8 hidden text-[9px] uppercase tracking-[0.35em] text-white/35 md:block">
-        Desliza para explorar
-      </div>
+        {/* Un solo bloque de CTAs: antes se duplicaba en `md:hidden` y en la
+            columna derecha, cuatro nodos `motion` para los mismos dos botones. */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+          className="mt-20 flex flex-col items-center gap-3 md:mt-24"
+        >
+          <ButtonLink
+            href="/agenda/modalidad"
+            variant="vivid"
+            size="lg"
+            ariaLabel="Agendar cita"
+          >
+            {HERO.cta}
+          </ButtonLink>
+          <ButtonLink href="/portafolio" primary={false}>
+            {HERO.ctaSecundaria}
+          </ButtonLink>
+        </motion.div>
+      </motion.div>
     </section>
   )
 }

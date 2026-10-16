@@ -13,9 +13,11 @@ Landing y panel staff para la carpintería artesanal Tonfort. Next.js 16 (App Ro
 | `docs/03_design_system.md` | Tokens visuales (colores, tipografía, utilities) |
 | `docs/04_arquitectura.md` | Stack tech, estructura de carpetas, convenciones de código |
 | `docs/05_auditoria.md` | Inventario de archivos, código muerto, desviaciones |
+| `docs/11_manifiesto_portafolio.md` | Manifiesto de 190 proyectos del portafolio histórico de Bogotá |
+| `docs/12_reinit_y_set_base.md` | Reinit reproducible, set base versionado, comando `npm run db:reinit` |
 | `docs/RUTAS.md` | Contrato de rutas y backend |
 | `docs/Organigrama.md` | Flujo de despliegue |
-| `docs/planificacion-3D/` | Planificación aspiracional del módulo 3D (no implementado) |
+| `docs/planificacion-3D/` | Planificación aspiracional del módulo 3D (no existe en el repo; plan aspiracional) |
 
 ## Cómo correr (desarrollo local)
 

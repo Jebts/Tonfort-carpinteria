@@ -18,6 +18,12 @@ export interface ViewerSequenceConfig {
   frameCentroMs: number | null
   velocidadNormal?: number
   velocidadInversa?: number
+  /**
+   * Avisa cuando el video global ya está decodificado y colocado en el frame
+   * centro. El carrusel lo usa para no iniciar la entrada de una diapositiva
+   * sobre un rectángulo negro, que es lo que provoca el parpadeo.
+   */
+  onVideoGlobalListo?: () => void
 }
 
 export interface ViewerSequenceReturn {
@@ -58,6 +64,7 @@ export function useViewerSequence(
     frameCentroMs,
     velocidadNormal = 1,
     velocidadInversa = 2,
+    onVideoGlobalListo,
   } = config
 
   const [state, setState] = useState<ViewerState>("GLOBAL")
@@ -553,12 +560,13 @@ export function useViewerSequence(
       activeAnimacionRef.current = null
       pendingAnimacionRef.current = null
       // El video global queda pausado en el frame centro (imán). No autoplay.
+      onVideoGlobalListo?.()
     }, true)
 
     return () => {
       clearTransitionWork()
     }
-  }, [videoGlobalUrl, loadVideo, handleSlotChange, getCenterMs, clearTransitionWork])
+  }, [videoGlobalUrl, loadVideo, handleSlotChange, getCenterMs, clearTransitionWork, onVideoGlobalListo])
 
   // Actualiza el tiempo mostrado desde el video activo vía evento timeupdate.
   // Reemplaza el loop continuo de RAF (60fps) que saturaba el hilo principal.

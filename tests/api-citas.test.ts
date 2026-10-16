@@ -15,6 +15,7 @@ vi.mock("@/lib/citas-service", () => ({
   crearCitaWeb: vi.fn(),
   getCitasTableName: vi.fn().mockResolvedValue("citas"),
   getModalidadPorSlug: vi.fn(),
+  validarSlotLibre: vi.fn(),
 }))
 
 import { GET, POST } from "@/app/api/citas/route"
@@ -24,6 +25,7 @@ import {
   crearCitaWeb,
   getCitasTableName,
   getModalidadPorSlug,
+  validarSlotLibre,
 } from "@/lib/citas-service"
 import { makeSupabase } from "./helpers/supabase"
 import type { ModalidadCita } from "@/lib/supabase/types"
@@ -77,6 +79,8 @@ beforeEach(() => {
   vi.mocked(calcularDisponibilidad).mockReset()
   vi.mocked(crearCitaWeb).mockReset()
   vi.mocked(getCitasTableName).mockResolvedValue("citas")
+  vi.mocked(validarSlotLibre).mockReset()
+  vi.mocked(validarSlotLibre).mockResolvedValue({ ok: true })
   vi.mocked(getModalidadPorSlug).mockReset()
   vi.mocked(getModalidadPorSlug).mockResolvedValue(modalidad())
 })
@@ -88,7 +92,7 @@ afterEach(() => {
 describe("GET /api/citas", () => {
   it("200 con slots", async () => {
     vi.mocked(calcularDisponibilidad).mockResolvedValue([
-      { fecha_hora: "2026-08-17T13:00:00.000Z", duracion_minutos: 120, estado: "vacio", citas: [] },
+      { fecha_hora: "2026-08-17T13:00:00.000Z", duracion_minutos: 120, estado: "vacio", citas: [], enEspera: 0, canceladas: 0 },
     ])
     const res = await GET(new NextRequest("http://localhost/api/citas"))
     expect(res.status).toBe(200)
@@ -145,13 +149,28 @@ describe("POST /api/citas", () => {
     expect(res.status).toBe(422)
   })
 
-  it("429 cita semanal duplicada (misma ip)", async () => {
+  it("409 si la misma IP ya tiene una cita en el bloque", async () => {
     h.ip = "1.2.3.4"
     vi.mocked(getServiceSupabase).mockReturnValue(
       makeSupabase({ citas: [{ data: [{ id: "old" }], error: null }] }) as never,
     )
     const res = await postCita(bodyCita())
-    expect(res.status).toBe(429)
+    // 409 (conflicto), no 429: el límite de tasa es otro y tiene su propio código.
+    expect(res.status).toBe(409)
+    const data = await res.json()
+    expect(data.error).toContain("este bloque")
+  })
+
+  it("sin IP conocida no se agrupa a los visitantes por `ip IS NULL`", async () => {
+    // Con IP desconocida la deduplicacion por IP se omite: si no, todas las
+    // citas sin IP (incluidas las que crea staff) agruparían a los visitantes.
+    h.ip = null
+    vi.mocked(getServiceSupabase).mockReturnValue(
+      makeSupabase({ citas: [{ data: [{ id: "old" }], error: null }] }) as never,
+    )
+    vi.mocked(crearCitaWeb).mockResolvedValue({ ok: true, cita: { id: "c1" } as never })
+    const res = await postCita(bodyCita())
+    expect(res.status).toBe(201)
   })
 
   it("201 crea (sin ip, backend ok)", async () => {

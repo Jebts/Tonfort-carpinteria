@@ -4,7 +4,7 @@ import { useState } from "react"
 import { X, ChevronLeft, Video, Layout, Globe, FileText, Zap, Plus, Edit2, Trash2, Check, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-interface SidebarSection {
+export interface SidebarSection {
   id: string
   label: string
   icon: React.ReactNode

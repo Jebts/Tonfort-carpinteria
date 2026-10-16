@@ -5,15 +5,15 @@ import type { Tone } from "@/components/tonfort/public-animations"
 export function PublicFooter({ tone = "dark" }: { tone?: Tone }) {
   const light = tone === "light"
   const linkTone = light
-    ? "text-brand-navy/70 transition-colors hover:text-brand-navy"
+    ? "text-brand-navy transition-colors hover:text-royal"
     : "text-copy transition-colors hover:text-white"
-  const columnLabel = light ? "text-brand-navy/60" : "text-white/50"
+  const columnLabel = light ? "text-brand-navy/80" : "text-white/50"
 
   return (
     <footer
       className={
         light
-          ? "border-t border-brand-beige bg-background px-6 py-24 text-brand-navy/60 md:px-10 md:py-32"
+          ? "border-t border-brand-beige bg-white px-6 py-24 text-brand-navy/85 md:px-10 md:py-32"
           : "bg-black px-6 py-24 text-copy/70 md:px-10 md:py-32"
       }
     >
@@ -35,11 +35,8 @@ export function PublicFooter({ tone = "dark" }: { tone?: Tone }) {
             <Link href="/sede" className={linkTone}>
               Sede
             </Link>
-            <Link href="/portafolio/santa-marta" className={linkTone}>
-              Portafolio · Santa Marta
-            </Link>
-            <Link href="/portafolio/bogota" className={linkTone}>
-              Portafolio · Bogotá
+            <Link href="/portafolio" className={linkTone}>
+              Portafolio
             </Link>
             <Link href="/historia" className={linkTone}>
               Historia
@@ -53,7 +50,7 @@ export function PublicFooter({ tone = "dark" }: { tone?: Tone }) {
         <div>
           <p className={`eyebrow mb-4 ${columnLabel}`}>La sede</p>
           <div className="flex flex-col gap-3 text-sm">
-            <span className="text-inherit">{SEDE.direccion}</span>
+            <span className={light ? "text-brand-navy/85" : "text-inherit"}>{SEDE.direccion}</span>
             <a href={SEDE.telefonoUrl} className={linkTone}>
               {SEDE.telefono}
             </a>
@@ -69,7 +66,7 @@ export function PublicFooter({ tone = "dark" }: { tone?: Tone }) {
 
       <div
         className={`mx-auto mt-16 flex max-w-7xl justify-between border-t pt-5 text-xs ${
-          light ? "border-brand-beige text-brand-navy/60" : "border-white/10 text-copy/70"
+          light ? "border-brand-beige text-brand-navy/70" : "border-white/10 text-copy/70"
         }`}
       >
         <span>© {new Date().getFullYear()} Tonfort</span>
