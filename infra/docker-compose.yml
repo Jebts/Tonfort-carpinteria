@@ -11,7 +11,7 @@
 services:
   carpinteria-web:
     build:
-      context: ..
+      context: .
       dockerfile: ../Dockerfile
       args:
         NEXT_PUBLIC_WHATSAPP_NUMBER: ${CARPINTERIA_WHATSAPP_NUMBER}
