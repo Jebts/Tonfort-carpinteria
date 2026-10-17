@@ -134,7 +134,7 @@ echo
 # =========================================================================
 echo "=== Paso 4/7: Pull y up de contenedores ==="
 run "$SSH_CMD_BASE \"cd $VPS_REMOTE_DIR && docker compose $COMPOSE_FILES --env-file .env pull\""
-run "$SSH_CMD_BASE \"cd $VPS_REMOTE_DIR && docker compose $COMPOSE_FILES --env-file .env up -d --build\""
+run "$SSH_CMD_BASE \"cd $VPS_REMOTE_DIR && docker compose $COMPOSE_FILES --env-file .env up -d --build --force-recreate\""
 echo
 
 # =========================================================================
