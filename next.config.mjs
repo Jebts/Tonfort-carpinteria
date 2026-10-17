@@ -16,7 +16,7 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   images: {
-    unoptimized: false,
+    unoptimized: true,
     // AVIF primero: el PNG de origen son 334 KB-918 KB y el PNG más pesado cae
     // por debajo de 200 KB servido en AVIF.
     formats: ["image/avif", "image/webp"],
