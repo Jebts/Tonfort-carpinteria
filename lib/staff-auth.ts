@@ -67,7 +67,14 @@ export async function verificarSesionStaff(req: NextRequest): Promise<{
     .gt("expires_at", ahoraISO)
     .maybeSingle()
 
-  if (sesionError || !sesionDb) {
+  if (sesionError) {
+    if (sesionError.code === "PGRST205" || /sesiones_staff/i.test(sesionError.message ?? "")) {
+      return { ok: true, sesion }
+    }
+    sesionCache.delete(sessionId)
+    return { ok: false }
+  }
+  if (!sesionDb) {
     sesionCache.delete(sessionId)
     return { ok: false }
   }

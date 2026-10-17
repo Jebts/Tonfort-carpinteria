@@ -40,7 +40,9 @@ function LoginForm() {
             ? "/staff/gestion"
             : "/staff/administracion"
 
-      let redirect = params.get("redirect") || defaultRedirect
+      let redirect = params.get("redirect")
+        ? decodeURIComponent(params.get("redirect")!)
+        : defaultRedirect
       if (!redirect.startsWith("/") || redirect.startsWith("//") || /^[a-z][a-z0-9+.-]*:/i.test(redirect)) {
         redirect = defaultRedirect
       }
