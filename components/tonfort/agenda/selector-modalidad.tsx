@@ -2,17 +2,19 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { motion, useReducedMotion } from "motion/react"
 import { Check, Laptop, MapPin, ArrowRight } from "lucide-react"
 import { formatPrecio } from "@/lib/agenda-format"
 import { cn } from "@/lib/utils"
+import type { ProyectoResumen } from "@/lib/portfolio-service"
 
 // Resumen en texto de lo que explica el video. Vive aquí porque es el fallback
 // cuando el video no carga o la persona pidió menos movimiento.
 const RESUMEN_VIDEO = [
   "Una cita virtual es una videollamada con tu diseñador: sin costo y desde donde estés.",
   "Una visita presencial va a tu domicilio, con toma de medidas y diagnóstico del espacio.",
-  "Las citas duran 1 h 30 m dentro de bloques de 2 h, con 30 min de gabela entre una y otra.",
+  "Las citas duran una hora y media.",
   "En ambos casos el siguiente paso es el mismo: elegir día y hora.",
 ]
 
@@ -30,31 +32,71 @@ export interface ModalidadOpcion {
 
 const ICONOS = { laptop: Laptop, map: MapPin }
 
-export function SelectorModalidad({ opciones }: { opciones: ModalidadOpcion[] }) {
+export function SelectorModalidad({
+  opciones,
+  proyectosDestacados,
+}: {
+  opciones: ModalidadOpcion[]
+  proyectosDestacados?: ProyectoResumen[]
+}) {
   const [elegida, setElegida] = useState<ModalidadOpcion | null>(null)
+  const [videoFallido, setVideoFallido] = useState(false)
   const router = useRouter()
   const reducirMovimiento = useReducedMotion()
 
   const activa = elegida ?? null
 
+  const proyectosCarrusel = (proyectosDestacados ?? []).slice(0, 3)
+
   return (
     <div className="lg:grid lg:grid-cols-12 lg:gap-14">
-      {/* Columna izquierda: video explicativo */}
+      {/* Columna izquierda: video o carrusel de respaldo */}
       <div className="lg:col-span-8">
         <div className="overflow-hidden rounded-2xl border border-[#E8DFD0] shadow-[0_16px_32px_rgba(11,29,58,.05),0_4px_12px_rgba(11,29,58,.07)]">
-          <div className="aspect-video">
-            <video
-              src="/agenda/modalidades.mp4"
-              poster="/agenda/modalidades-poster.png"
-              autoPlay={!reducirMovimiento}
-              muted
-              loop
-              playsInline
-              controls={reducirMovimiento ?? false}
-              preload="metadata"
-              aria-label="Qué es una cita virtual y qué es una visita presencial"
-              className="size-full bg-black object-cover"
-            />
+          <div className="aspect-video relative">
+            {videoFallido && proyectosCarrusel.length > 0 ? (
+              <div className="size-full bg-black flex items-center justify-center overflow-hidden">
+                <div className="relative size-full">
+                  {proyectosCarrusel.map((p, i) => (
+                    <Image
+                      key={p.id}
+                      src={p.portada_url ?? "/tonfort-closet-render.png"}
+                      alt={p.titulo}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      quality={90}
+                      priority={i === 0}
+                      className="absolute inset-0 size-full object-cover transition-opacity duration-500 ease-in-out"
+                      style={{
+                        opacity: i === 0 ? 1 : 0,
+                        pointerEvents: i === 0 ? "auto" : "none",
+                      }}
+                    />
+                  ))}
+                  <button
+                    onClick={() => setVideoFallido(false)}
+                    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/60 text-white hover:bg-black/80 transition"
+                    aria-label="Volver a intentar video"
+                  >
+                    <ArrowRight className="size-4 rotate-90" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <video
+                src="/agenda/modalidades.mp4"
+                poster="/agenda/modalidades-poster.png"
+                autoPlay={!reducirMovimiento}
+                muted
+                loop
+                playsInline
+                controls={reducirMovimiento ?? false}
+                preload="metadata"
+                aria-label="Qué es una cita virtual y qué es una visita presencial"
+                className="size-full bg-black object-cover"
+                onError={() => setVideoFallido(true)}
+              />
+            )}
           </div>
         </div>
 

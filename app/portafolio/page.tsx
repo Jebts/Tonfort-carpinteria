@@ -107,6 +107,9 @@ export default async function PortafolioPage({
 
           {SEDES.map((sede, indice) => {
             const lista = porSede[sede.value]
+            // Si la sede no tiene proyectos publicados, se omite por completo.
+            if (lista.length === 0) return null
+
             const copy = BAND_SEDE[sede.value]
             return (
               <div
@@ -125,31 +128,23 @@ export default async function PortafolioPage({
                   </p>
                 </div>
 
-                {lista.length === 0 ? (
-                  <p className="rounded-2xl border border-white/10 px-8 py-16 text-center text-[#a1a1a6]">
-                    {categoria
-                      ? `Todavía no hay proyectos de esta categoría en ${sede.label}.`
-                      : `Todavía no hay proyectos publicados en ${sede.label}.`}
-                  </p>
-                ) : (
-                  <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                    {lista.map((proyecto, i) => (
-                      <div key={proyecto.id} className={i % 3 === 1 ? "md:translate-y-10" : ""}>
-                        <ProjectCard
-                          project={{
-                            title: proyecto.titulo,
-                            // El label de categoría, nunca "Sin categoría" cuando sí la hay.
-                            category: proyecto.categoria
-                              ? ETIQUETA_CATEGORIA[proyecto.categoria]
-                              : "Sin categoría",
-                            image: proyecto.portada_url ?? FALLBACK_PORTADA,
-                            href: `/portafolio/${SLUG_SEDE[proyecto.sede]}/${proyecto.slug}`,
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                  {lista.map((proyecto, i) => (
+                    <div key={proyecto.id} className={i % 3 === 1 ? "md:translate-y-10" : ""}>
+                      <ProjectCard
+                        project={{
+                          title: proyecto.titulo,
+                          // El label de categoría, nunca "Sin categoría" cuando sí la hay.
+                          category: proyecto.categoria
+                            ? ETIQUETA_CATEGORIA[proyecto.categoria]
+                            : "Sin categoría",
+                          image: proyecto.portada_url ?? FALLBACK_PORTADA,
+                          href: `/portafolio/${SLUG_SEDE[proyecto.sede]}/${proyecto.slug}`,
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             )
           })}

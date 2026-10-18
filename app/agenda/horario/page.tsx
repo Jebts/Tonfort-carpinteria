@@ -15,7 +15,7 @@ import type { BloqueSemana } from "@/components/tonfort/agenda/calendario"
 
 export const metadata: Metadata = {
   title: "Elige tu horario · Tonfort",
-  description: "Elige el día y la hora de tu cita de diseño (1 h 30 m dentro de bloques de 2 h, con 30 min de gabela).",
+  description: "Elige el día y la hora de tu cita de diseño (citas de una hora y media).",
   robots: { index: false },
 }
 

@@ -9,12 +9,13 @@ import {
   getModalidadesActivas,
   tieneCitaRecientePorIP,
 } from "@/lib/citas-service"
+import { getProyectosPublicados } from "@/lib/portfolio-service"
 import { SelectorModalidad, type ModalidadOpcion } from "@/components/tonfort/agenda/selector-modalidad"
 
 export const metadata: Metadata = {
   title: "Agendar cita · Tonfort",
     description:
-      "Elige cómo empezar: una cita virtual gratis o una visita presencial a tu domicilio. Las citas duran 1 h 30 m dentro de bloques de 2 h, con 30 min de gabela. Después eliges día y hora.",
+      "Elige cómo empezar: una cita virtual gratis o una visita presencial a tu domicilio. Las citas duran una hora y media. Después eliges día y hora.",
   alternates: { canonical: "/agenda/modalidad" },
 }
 
@@ -57,6 +58,10 @@ export default async function AgendaModalidadPage() {
 
   const modalidades = await getModalidadesActivas()
 
+  // Obtener los primeros 3 proyectos publicados para el carrusel de respaldo
+  // si el video explicativo no carga.
+  const proyectosDestacados = await getProyectosPublicados({ limite: 3 })
+
   // Si el catálogo está vacío o no tiene exactamente 2 activas, el formulario
   // no se renderiza: es preferible un enlace a WhatsApp a un flujo roto.
   const completas = modalidades.length === 2
@@ -95,7 +100,7 @@ export default async function AgendaModalidadPage() {
 
   return (
     <div className="pb-16">
-      <SelectorModalidad opciones={opciones} />
+      <SelectorModalidad opciones={opciones} proyectosDestacados={proyectosDestacados} />
       <p className="mt-12 text-sm text-[#0B1D3A]/50">
         ¿Prefieres hablar antes?{" "}
         <Link
