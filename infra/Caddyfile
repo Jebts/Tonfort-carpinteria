@@ -1,17 +1,17 @@
 # Caddy como reverse proxy TLS para carpintería.
-# TLS automático (Let's Encrypt) por subdominio: carpinteria.{DOMAIN}.
+# TLS automático (Let's Encrypt) por dominio: {DOMAIN}.
 # Los certificados se gestionan solos (HTTP-01 challenge),
 # por eso el DNS debe resolver al VPS y los puertos 80/443 deben estar abiertos
 # ANTES de `up -d`. Mantener el A record en grey-cloud (Cloudflare) para no
 # romper el challenge.
 #
-# Enruta: carpinteria.{DOMAIN} -> carpinteria-web:3000.
+# Enruta: {DOMAIN} -> carpinteria-web:3000.
 
 {
   email {$CADDY_EMAIL}
 }
 
-carpinteria.{$DOMAIN} {
+{$DOMAIN} {
   encode gzip
   reverse_proxy carpinteria-web:3000 {
     header_up X-Real-IP {remote_host}

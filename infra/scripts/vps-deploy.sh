@@ -153,11 +153,11 @@ fi
 echo "  Contenedores activos:"
 ssh_remote "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sed 's/^/    /'
 
-CARPINTERIA_STATUS="$(curl -s -o /dev/null -w "%{http_code}" "https://carpinteria.${DOMAIN}" 2>/dev/null || echo "000")"
+CARPINTERIA_STATUS="$(curl -s -o /dev/null -w "%{http_code}" "https://${DOMAIN}" 2>/dev/null || echo "000")"
 if [ "$CARPINTERIA_STATUS" = "200" ]; then
-  echo "  [OK] https://carpinteria.${DOMAIN} -> $CARPINTERIA_STATUS"
+  echo "  [OK] https://${DOMAIN} -> $CARPINTERIA_STATUS"
 else
-  echo "  [WARN] https://carpinteria.${DOMAIN} -> $CARPINTERIA_STATUS (se esperaba 200)"
+  echo "  [WARN] https://${DOMAIN} -> $CARPINTERIA_STATUS (se esperaba 200)"
 fi
 
 echo
