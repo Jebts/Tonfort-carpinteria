@@ -1,7 +1,6 @@
 import React from "react"
 import type { Metadata } from 'next'
 import { Arvo, Montserrat } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
 import { SmoothScrollProvider } from '@/components/tonfort/smooth-scroll-provider'
 import './globals.css'
@@ -28,11 +27,11 @@ export const metadata: Metadata = {
   title: 'Tonfort — Diseño de espacios y mobiliario a medida',
   description: 'No diseñamos muebles, diseñamos espacios. Cocinas, closets, muebles de TV y puertas a medida con soluciones de iluminación integradas. Vendemos la experiencia de habitar un espacio.',
   icons: {
-    icon: '/icon-light-32x32.png',
-    apple: '/apple-icon.png',
+    icon: '/icon-light-32x32.png?v=2',
+    apple: '/apple-icon.png?v=2',
     other: [
-      { rel: 'icon', type: 'image/png', sizes: '32x32', url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
-      { rel: 'icon', type: 'image/png', sizes: '32x32', url: '/icon-dark-32x32.png', media: '(prefers-color-scheme: dark)' },
+      { rel: 'icon', type: 'image/png', sizes: '32x32', url: '/icon-light-32x32.png?v=2', media: '(prefers-color-scheme: light)' },
+      { rel: 'icon', type: 'image/png', sizes: '32x32', url: '/icon-dark-32x32.png?v=2', media: '(prefers-color-scheme: dark)' },
     ],
   },
 }
@@ -49,7 +48,6 @@ export default function RootLayout({
           <SmoothScrollProvider>
             {children}
           </SmoothScrollProvider>
-          <Analytics />
         </ThemeProvider>
       </body>
     </html>
