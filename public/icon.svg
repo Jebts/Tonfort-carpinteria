@@ -2,13 +2,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <defs>
     <style>
-      .tonfort-t { fill: #0B1D3A; }
-      .tonfort-bg { fill: #E8DFD0; }
+      .tt-logo { fill: #0B1D3A; }
+      .tt-bg { fill: #E8DFD0; }
     </style>
   </defs>
-  <!-- Fondo redondeado (modo claro por defecto) -->
-  <rect width="32" height="32" rx="7" class="tonfort-bg"/>
-  <!-- Letra T de Tonfort -->
-  <rect x="10" y="3" width="12" height="24" rx="2" class="tonfort-t"/>
-  <rect x="6" y="3" width="20" height="4" rx="2" class="tonfort-t"/>
+  <!-- Fondo redondeado -->
+  <rect width="32" height="32" rx="7" class="tt-bg"/>
+  
+  <!-- T izquierda (normal) -->
+  <rect x="7" y="5" width="2" height="18" rx="1" class="tt-logo"/>
+  <rect x="5" y="3" width="6" height="3" rx="1" class="tt-logo"/>
+  
+  <!-- T derecha (invertida/espejo) -->
+  <rect x="23" y="5" width="2" height="18" rx="1" class="tt-logo"/>
+  <rect x="21" y="3" width="6" height="3" rx="1" class="tt-logo"/>
+  
+  <!-- Barra base conectando -->
+  <rect x="10" y="26" width="12" height="2" rx="1" class="tt-logo"/>
 </svg>
