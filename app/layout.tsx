@@ -29,7 +29,6 @@ export const metadata: Metadata = {
   description: 'No diseñamos muebles, diseñamos espacios. Cocinas, closets, muebles de TV y puertas a medida con soluciones de iluminación integradas. Vendemos la experiencia de habitar un espacio.',
   icons: {
     icon: '/icon-light-32x32.png',
-    shortcutIcon: '/icon-dark-32x32.png',
     apple: '/apple-icon.png',
     other: [
       { rel: 'icon', type: 'image/png', sizes: '32x32', url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
